@@ -1,111 +1,2125 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bookaholic - MBO & Daily Log</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>나의 서재 & MBO</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
-  <!-- 1. 상단 동기부여 배너 -->
-  <div class="motivation-banner">
-    <div class="motivation-quote">
-      "목적 없는 삶은 항해사 없는 배와 같다." 
-      <span class="motivation-author">- 토마스 칼라일</span>
+<!-- 공유 화면 -->
+<div id="sharedScreen" class="hidden">
+  <div class="home-wrap">
+    <p class="home-eyebrow">👀 친구의 서재 (공유 스냅샷)</p>
+    <h1 id="sharedOwnerName">서재</h1>
+    <p class="home-sub" id="sharedTotalText"></p>
+    <div class="grid" id="sharedGrid" style="margin-top:28px;"></div>
+    <p class="rc-note" style="margin-top:20px;">비공개로 둔 책은 보이지 않아요. 이 화면은 링크를 받은 시점의 스냅샷이라 실시간으로 바뀌지 않아요.</p>
+  </div>
+</div>
+<div id="sharedBookOverlay" class="hidden"></div>
+
+<!-- 메인 MBO 화면 (그리드 진함/연함 표시 및 전체 회고 버튼 추가) -->
+<div id="mboScreen">
+  <div class="mbo-wrap">
+    <p class="home-eyebrow">나의 생활 MBO</p>
+    <h1 class="mbo-title">오늘 뭘 채웠나요?</h1>
+    <p class="home-sub">목표 달성률에 따라 카드가 밝아지고 진해져요.</p>
+    
+    <div class="mbo-grid" id="mboGrid"></div>
+
+    <div style="margin-top:28px; text-align:center;">
+      <button class="home-cta ghost-cta" id="openLifeRetroBtn" type="button">📖 나의 생활 종합 회고 보기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 브릿지 페이지 (목표 넛지 설정 + 중간 브릿지역할) -->
+<div id="bridgeScreen" class="hidden">
+  <div class="home-wrap">
+    <button class="home-link" id="bridgeBackBtn" type="button">← MBO 메인</button>
+    <p class="home-eyebrow" id="bridgeEyebrow">나의 MBO 프로젝트</p>
+    <h1 id="bridgeTitle">목표</h1>
+    <p class="home-sub" id="bridgeStreak"></p>
+
+    <!-- 매 페이지마다 제공되는 동기부여 문구 카드 -->
+    <div class="reward-card quote-card" style="margin-bottom:20px; background:var(--paper-dim, #f4f0ea);">
+      <p id="bridgeMotivationQuote" style="font-style:italic; font-weight:600; font-size:15px; margin:0; color:#4a3e3d;"></p>
+    </div>
+
+    <!-- 목표 미설정자용 스텝 바이 스텝 넛지 워크플로우 -->
+    <div id="nudgeBox" class="reward-card hidden" style="border: 2px dashed var(--cloth, #8c6d58); margin-bottom:20px;">
+      <h3>🎯 목표가 아직 구체적이지 않나요?</h3>
+      <p class="rc-sub">작은 습관부터 단계별로 설정해 보세요!</p>
+      <div id="nudgeSteps" style="margin-top:14px;">
+        <div class="nudge-step" id="nudgeStep1">
+          <p><b>1단계:</b> 구체적으로 실천할 실행 목표를 입력해보세요.</p>
+          <input type="text" id="nudgeGoalInput" placeholder="예: 매일 아침 10분 읽기, 23:00 정각 취침" style="width:100%; margin:8px 0; padding:8px;" />
+          <button id="nudgeStep1NextBtn">다음 →</button>
+        </div>
+        <div class="nudge-step hidden" id="nudgeStep2">
+          <p><b>2단계:</b> 언제, 어디서 실천할 건가요?</p>
+          <input type="text" id="nudgeWhenInput" placeholder="예: 출근길 지하철에서, 잠들기 전 침대에서" style="width:100%; margin:8px 0; padding:8px;" />
+          <button id="nudgeSaveBtn">목표 저장 및 시작하기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 미니 히트맵 -->
+    <div class="mini-heatmap-wrap">
+      <div class="heatmap-grid mini-heatmap" id="bridgeHeatmap"></div>
+      <div class="heatmap-legend sans" style="justify-content:center; margin-top:8px;">
+        <span>최근 12주 실천 현황</span>
+      </div>
+    </div>
+
+    <!-- 오늘 바로 기록하는 위젯 -->
+    <div class="reward-card" id="bridgeWidgetCard">
+      <div class="rc-head"><h3>오늘 기록하기</h3><span class="rc-sub" id="bridgeTodayLabel"></span></div>
+      <div id="bridgeWidget"></div>
+    </div>
+
+    <button class="home-cta ghost-cta" id="goRoutineDetailBtn" type="button">히스토리 & 세부 페이지 보기 →</button>
+  </div>
+</div>
+
+<!-- 세부 페이지 (전체 기록 관리) -->
+<div id="routineDetailScreen" class="hidden">
+  <div class="home-wrap" style="max-width:640px;">
+    <button class="home-link" id="routineDetailBackBtn" type="button">← 뒤로</button>
+    <h1 id="routineDetailTitle">기록</h1>
+
+    <div class="reward-card quote-card" style="margin-bottom:20px; background:#f0f4f8;">
+      <p id="detailMotivationQuote" style="font-style:italic; font-weight:600; font-size:14px; margin:0; color:#2c4a6f;"></p>
+    </div>
+
+    <div class="retro-grid" id="routineDetailStats"></div>
+
+    <div class="reward-card">
+      <div class="rc-head"><h3>날짜 선택해서 기록하기</h3></div>
+      <div class="routine-edit-row">
+        <input type="date" id="routineEditDate" />
+        <div id="routineEditValue"></div>
+        <button id="routineEditSaveBtn" type="button">저장</button>
+      </div>
+    </div>
+
+    <div class="retro-sec"><h4>전체 기록 타임라인</h4><div id="routineEntryList"></div></div>
+  </div>
+</div>
+
+<!-- 독서 프로젝트 홈 화면 -->
+<div id="homeScreen">
+  <div class="home-wrap">
+    <button class="home-link" id="backToMboBtn" type="button">← MBO 메인</button>
+    <div class="home-hero">
+      <p class="home-eyebrow" id="homeEyebrow">100권 읽기 프로젝트</p>
+      <h1>지금까지 <span id="homeCount">0</span>권</h1>
+      <p class="home-sub" id="homeSub">목표까지 100권 남았어요</p>
+    </div>
+
+    <div class="home-ring-row">
+      <div class="ring-wrap home-ring">
+        <svg width="180" height="180">
+          <circle cx="90" cy="90" r="78" stroke="var(--paper-dim)" stroke-width="14" fill="none"/>
+          <circle id="homeRingFg" cx="90" cy="90" r="78" stroke="var(--cloth)" stroke-width="14" fill="none" stroke-linecap="round"/>
+        </svg>
+        <div class="ring-pct home-ring-pct" id="homeRingPct">0%</div>
+      </div>
+      <div class="home-stats">
+        <div class="home-stat"><span class="hs-num" id="homeDone">0</span><span class="hs-label">완독</span></div>
+        <div class="home-stat"><span class="hs-num" id="homeProgress">0</span><span class="hs-label">읽는 중</span></div>
+        <div class="home-stat"><span class="hs-num" id="homeHours">0</span><span class="hs-label">총 독서시간</span></div>
+      </div>
+    </div>
+
+    <div class="home-baseline">
+      서재 기록 이전에 읽은 책
+      <input type="number" id="baselineInput" min="0" value="0" />
+      권 (직접 입력 가능)
+    </div>
+
+    <div class="home-shelf" id="homeShelf"></div>
+
+    <button class="home-cta" id="enterLibraryBtn" type="button">나의 서재 들어가기 →</button>
+    <button class="home-cta ghost-cta" id="openRetroBtn" type="button">📖 독서 회고 보기</button>
+
+    <div class="reward-section">
+      <div class="reward-card">
+        <div class="rc-head"><h3>이번 주 목표</h3><span class="rc-sub" id="weekGoalText"></span></div>
+        <div class="op-bar-track"><div class="op-bar-fill" id="weekGoalFill" style="width:0%"></div></div>
+        <div class="rc-foot">주간 목표 <input type="number" id="weeklyGoalInput" min="1" value="2" /> 권 (월~일 기준, 완료일이 이번 주인 책)</div>
+      </div>
+      <div class="reward-card">
+        <div class="rc-head"><h3>연속 독서 · 출석 스티커</h3><span class="rc-sub" id="streakText"></span></div>
+        <div class="sticker-row" id="stickerRow"></div>
+      </div>
+      <div class="reward-card">
+        <div class="rc-head"><h3>나의 책갈피</h3><span class="rc-sub" id="bookmarkText"></span></div>
+        <div class="bookmark-row" id="bookmarkRow"></div>
+        <p class="rc-note" id="bookmarkNote"></p>
+      </div>
+      <div class="reward-card">
+        <div class="rc-head"><h3>뱃지</h3><span class="rc-sub" id="badgeText"></span></div>
+        <div class="badge-row" id="badgeRow"></div>
+        <p class="rc-note">완독 예상일(목표 완독일)보다 일찍 끝내면 ⚡ 앞당김 뱃지를 받아요.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 서재 화면 -->
+<div id="library" class="hidden">
+  <div class="lib-header">
+    <div>
+      <button class="home-link" id="backHomeBtn" type="button">← 홈</button>
+      <h1>나의 서재</h1>
+      <p>책 한 권, 프로젝트 하나</p>
+    </div>
+    <div class="data-actions">
+      <button class="icon-btn" id="openRetroBtn2" type="button">회고</button>
+      <button class="icon-btn" id="openExportBtn" type="button">내보내기</button>
+      <button class="icon-btn" id="importBtn" type="button">가져오기</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none" />
     </div>
   </div>
 
-  <!-- 2. 메인 MBO 달성률 그리드 (잔디밭) -->
-  <section class="section-container">
-    <h2 class="section-title">🌱 나의 MBO 활동 잔디밭</h2>
-    <p class="section-desc">목표 달성률에 따라 셀의 황금색 농도가 진해집니다.</p>
-    
-    <div class="mbo-grid-board">
-      <div class="mbo-grid-cell" data-level="0" title="달성률 0%"></div>
-      <div class="mbo-grid-cell" data-level="1" title="달성률 25%"></div>
-      <div class="mbo-grid-cell" data-level="2" title="달성률 50%"></div>
-      <div class="mbo-grid-cell" data-level="3" title="달성률 75%"></div>
-      <div class="mbo-grid-cell" data-level="4" title="달성률 100%"></div>
-      <div class="mbo-grid-cell" data-level="2" title="달성률 50%"></div>
-      <div class="mbo-grid-cell" data-level="4" title="달성률 100%"></div>
-      <div class="mbo-grid-cell" data-level="1" title="달성률 25%"></div>
-      <div class="mbo-grid-cell" data-level="3" title="달성률 75%"></div>
-      <div class="mbo-grid-cell" data-level="0" title="달성률 0%"></div>
+  <div class="contrib-wrap">
+    <div class="contrib-head">
+      <h3 id="contribTitle">올해 독서 기록</h3>
+      <select id="contribYearSelect" class="year-select sans"></select>
     </div>
-  </section>
-
-  <!-- 3. Bridge (목표 전환 및 넛지) 페이지 -->
-  <section class="bridge-container">
-    <div class="bridge-book-spine"></div>
-    <div class="bridge-header">
-      <h2 class="bridge-title">제 2장: 목표의 정립</h2>
-      <p class="bridge-subtitle">세부 페이지로 이동하기 전, 목표를 점검하는 단원입니다.</p>
-    </div>
-
-    <!-- 목표 구체화 Step Wizard -->
-    <div class="nudge-step-wizard">
-      <div class="step-indicator">
-        <div class="step-dot active"></div>
-        <div class="step-dot"></div>
-        <div class="step-dot"></div>
-      </div>
-      <div class="nudge-question">
-        💡 이번 달에 완성하고 싶은 삶의 한 단락은 무엇인가요?
-      </div>
-      <div class="nudge-input-group">
-        <input type="text" class="nudge-input" placeholder="예: 매일 30분씩 독서하고 회고록 작성하기">
-      </div>
-      <div class="nudge-actions">
-        <button class="btn-secondary">건너뛰기</button>
-        <button class="btn-primary">다음 단계로 →</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- 4. 세부 목표 카드 (Detail Section) -->
-  <section class="section-container">
-    <h2 class="section-title">📖 세부 목표 진행 상황</h2>
-    <div class="goal-detail-grid">
-      <div class="goal-card">
-        <div class="goal-card-header">
-          <h3 class="goal-card-title">독서 및 회고</h3>
-          <span style="color: var(--text-gold); font-size: 0.85rem;">75%</span>
+    <span class="contrib-desc sans">타이머로 기록한 날이 표시돼요. 진할수록 그날 더 오래 읽은 거예요.</span>
+    <div class="contrib-scroll">
+      <div class="contrib-inner">
+        <div class="contrib-months" id="contribMonths"></div>
+        <div class="contrib-body">
+          <div class="contrib-days sans"><span></span><span>월</span><span></span><span>수</span><span></span><span>금</span><span></span></div>
+          <div class="contrib-grid" id="contribGrid"></div>
         </div>
-        <div class="goal-progress-bar">
-          <div class="goal-progress-fill" style="width: 75%;"></div>
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">월간 4권 읽기 목표 중 3권 완료</p>
-      </div>
-
-      <div class="goal-card">
-        <div class="goal-card-header">
-          <h3 class="goal-card-title">일일 루틴 작성</h3>
-          <span style="color: var(--text-gold); font-size: 0.85rem;">40%</span>
-        </div>
-        <div class="goal-progress-bar">
-          <div class="goal-progress-fill" style="width: 40%;"></div>
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">주간 루틴 달성률 관리 중</p>
       </div>
     </div>
-  </section>
+    <div class="heatmap-legend sans" style="justify-content:flex-end;">
+      <span>적게</span>
+      <span class="heatmap-cell"></span><span class="heatmap-cell l1"></span><span class="heatmap-cell l2"></span><span class="heatmap-cell l3"></span><span class="heatmap-cell l4"></span>
+      <span>많이</span>
+    </div>
+  </div>
 
-  <!-- 5. 독서회고 및 생활 종합 정리 (양면 펼침북 레이아웃) -->
-  <section class="retrospective-spread">
-    <div class="retro-page-left">
-      <h3 class="retro-section-title">📖 지난 생활 기록 요약</h3>
-      <div class="retro-summary-card">
-        이번 달에는 총 12개의 MBO 세부 과제 중 9개를 완수했습니다. 특히 독서 및 기록 습관 부문에서 높은 달성률을 보였습니다.
+  <div class="stats-wrap">
+    <div class="stat-panel">
+      <h3>최근 7일 독서 시간 <span class="stat-unit">(분)</span></h3>
+      <div class="bar-chart" id="statsWeek"></div>
+    </div>
+    <div class="stat-panel">
+      <div class="stat-panel-head">
+        <h3>월별 완독 권수</h3>
+        <select id="statsMonthYearSelect" class="year-select sans"></select>
+      </div>
+      <div class="bar-chart" id="statsMonth"></div>
+    </div>
+    <div class="stat-panel">
+      <h3>연도별 완독 <span class="stat-unit">(가장 많이 읽은 달 표시)</span></h3>
+      <div class="bar-chart" id="statsYear"></div>
+    </div>
+    <div class="stat-panel stat-wide">
+      <h3>장르별 권수</h3>
+      <div id="statsGenre"></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="제목·저자 검색" />
+    <div class="chip-group" id="statusChips">
+      <button class="chip active" data-status="all" type="button">전체</button>
+      <button class="chip" data-status="wishlist" type="button">읽고 싶음</button>
+      <button class="chip" data-status="not_started" type="button">시작 전</button>
+      <button class="chip" data-status="in_progress" type="button">읽는 중</button>
+      <button class="chip" data-status="done" type="button">완료</button>
+      <button class="chip" data-status="dropped" type="button">중단</button>
+    </div>
+    <select id="sortSelect">
+      <option value="updated">최근 업데이트순</option>
+      <option value="progress">진행률순</option>
+      <option value="title">제목순</option>
+    </select>
+    <button class="icon-btn active" id="viewGridBtn" type="button">그리드</button>
+    <button class="icon-btn" id="viewBoardBtn" type="button">보드</button>
+  </div>
+
+  <div class="toolbar share-toolbar">
+    <span class="share-hint sans">📖 왼쪽 위 눈 아이콘을 눌러 책마다 공개·비공개를 정해요 (기본은 비공개)</span>
+    <button class="icon-btn" id="markAllPublicBtn" type="button">전체 공개</button>
+    <button class="icon-btn" id="markAllPrivateBtn" type="button">전체 비공개</button>
+    <button class="icon-btn share-cta" id="openShareBtn" type="button">🔗 공유 링크</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="board hidden" id="board"></div>
+  <div class="count sans" id="libCount" style="margin-top:14px;"></div>
+</div>
+
+<div id="overlay"><div id="overlay-inner"></div></div>
+
+<!-- 종합 회고 / 독서 회고 모달 -->
+<div id="retroModal" class="modal-overlay hidden">
+  <div class="modal-box retro-box">
+    <div class="retro-head">
+      <h3 id="retroTitle">나의 회고</h3>
+      <select id="retroYear" class="modal-select" style="width:auto;"></select>
+    </div>
+    <div id="retroBody"></div>
+    <div class="modal-actions" style="justify-content:flex-end;">
+      <button class="secondary" id="closeRetroBtn" type="button">닫기</button>
+    </div>
+  </div>
+</div>
+
+<div id="exportModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>내보내기</h3>
+    <div class="export-list">
+      <button class="export-item" data-fmt="pdf" type="button"><b>PDF</b><span>홈 요약 → 서재 목록 → 책별 페이지로 정리된 문서</span></button>
+      <button class="export-item" data-fmt="xlsx" type="button"><b>Excel (.xlsx)</b><span>책 목록 · 문구 · 독서 기록이 시트별로 나뉘어요</span></button>
+      <button class="export-item" data-fmt="md" type="button"><b>Markdown (.md)</b><span>노션에 그대로 붙여넣거나 가져오기 할 수 있어요</span></button>
+      <button class="export-item" data-fmt="csv" type="button"><b>CSV (.csv)</b><span>노션 데이터베이스나 구글 시트로 가져오기용 책 목록</span></button>
+      <button class="export-item" data-fmt="json" type="button"><b>백업 (.json)</b><span>기록 전체를 그대로 저장해두는 파일. "가져오기"로 복원할 수 있어요</span></button>
+    </div>
+    <div class="modal-actions" style="justify-content:flex-end;">
+      <button class="secondary" id="closeExportBtn" type="button">닫기</button>
+    </div>
+  </div>
+</div>
+
+<div id="shareModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>공유 링크 만들기</h3>
+    <p class="fetch-status sans" style="margin-top:0;">
+      계정이나 서버 없이 작동하는 정적 사이트라, 진짜 "친구 코드" 로그인은 만들 수 없어요.
+      대신 <b>공개로 표시한 책들의 스냅샷</b>을 링크 하나에 담아드려요.
+    </p>
+    <label>친구에게 보여줄 이름</label>
+    <input id="ownerNameInput" placeholder="예: 빈나의 서재" />
+    <label>공유 링크</label>
+    <textarea id="shareLinkArea" class="share-link-area" rows="3" readonly></textarea>
+    <div class="modal-actions">
+      <span class="fetch-status sans" id="shareCopyStatus"></span>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" id="closeShareBtn" type="button">닫기</button>
+        <button class="secondary" id="regenShareBtn" type="button">다시 만들기</button>
+        <button id="copyShareBtn" type="button">링크 복사</button>
       </div>
     </div>
-    <div class="retro-page-right">
-      <h3 class="retro-section-title">✒️ 총평 및 성찰</h3>
-      <div class="retro-summary-card">
-        목표를 잘게 나누어 진행한 덕분에 꾸준함을 유지할 수 있었습니다. 다음 단원에서는 시간 배분을 조금 더 세분화해보세요.
+  </div>
+</div>
+
+<div id="addModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>새 책 추가</h3>
+    <div class="fetch-row">
+      <div>
+        <label>제목으로 정보 가져오기</label>
+        <input id="fSearchQuery" placeholder="예: 아몬드 손원평" />
+      </div>
+      <button class="secondary" id="fetchInfoBtn" type="button">검색</button>
+    </div>
+    <div class="fetch-status sans" id="fetchStatus"></div>
+
+    <label>제목</label>
+    <input id="fTitle" />
+    <label>저자</label>
+    <input id="fAuthor" />
+    <label>출판사</label>
+    <input id="fPublisher" />
+    <label>옮긴이 (있다면)</label>
+    <input id="fTranslator" />
+    <label>총 페이지 수</label>
+    <input id="fPages" type="number" min="0" />
+    <label>상태</label>
+    <select id="fStatus" class="modal-select">
+      <option value="wishlist">읽고 싶음</option>
+      <option value="not_started" selected>시작 전</option>
+      <option value="in_progress">읽는 중</option>
+    </select>
+
+    <div class="modal-actions">
+      <button class="secondary" id="cancelAddBtn" type="button">취소</button>
+      <button id="confirmAddBtn" type="button">추가하기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = "book-library-v1";
+let data = { books: [], baselineBooks: 0 };
+let currentBookId = null;
+let cardRectCache = null;
+let lastFetchedCover = null;
+
+// view/filter state
+let viewMode = "grid";      
+let filterStatus = "all";   
+let sortBy = "updated";     
+let searchQuery = "";
+
+// timer state
+let timer = { running:false, startTs:null, elapsed:0 };
+let timerInterval = null;
+
+const COVER_PALETTE = ["#213D31","#1B2E45","#4A2A1F","#332349","#3D2C10","#173B3B","#3B1B2C"];
+const STATUS_COLORS = {
+  wishlist: "#5C4F7A",
+  not_started: "#4A5560",
+  in_progress: "#2C5A82",
+  done: "#2F6B4D",
+  dropped: "#6B4B47"
+};
+
+const MOTIVATION_QUOTES = [
+  "“작은 변화가 축적되면 눈부신 성장을 이룹니다.”",
+  "“오늘의 작은 실행이 내일의 커다란 차이를 만듭니다.”",
+  "“시작하기 위해 위대해질 필요는 없지만, 위대해지기 위해 시작해야 합니다.”",
+  "“꾸준함은 그 어떤 천재성보다 강한 힘을 가집니다.”",
+  "“완벽함보다 중요한 것은 매일 이어가는 지속성입니다.”"
+];
+
+function getRandomQuote(){
+  return MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)];
+}
+
+function hashColor(str){
+  let h = 0;
+  for(let i=0;i<str.length;i++) h = str.charCodeAt(i) + ((h<<5)-h);
+  return COVER_PALETTE[Math.abs(h) % COVER_PALETTE.length];
+}
+
+function ringSvg(pct, size, stroke, trackColor, fgColor, textColor){
+  const r = (size/2) - (stroke/2) - 1;
+  const c = 2*Math.PI*r;
+  const dash = c * (pct/100);
+  const center = size/2;
+  const fontSize = Math.round(size*0.26);
+  return `
+    <svg width="${size}" height="${size}" class="mini-ring" viewBox="0 0 ${size} ${size}">
+      <circle cx="${center}" cy="${center}" r="${r}" stroke="${trackColor}" stroke-width="${stroke}" fill="none"/>
+      <circle cx="${center}" cy="${center}" r="${r}" stroke="${fgColor}" stroke-width="${stroke}" fill="none"
+        stroke-dasharray="${c}" stroke-dashoffset="${c-dash}" stroke-linecap="round"
+        transform="rotate(-90 ${center} ${center})"/>
+      <text x="${center}" y="${center}" text-anchor="middle" dominant-baseline="central"
+        font-size="${fontSize}" font-weight="700" fill="${textColor}" font-family="Avenir Next, sans-serif">${pct}%</text>
+    </svg>
+  `;
+}
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function fmtDate(d){
+  if(!d) return "";
+  const dt = new Date(d+"T00:00:00");
+  return `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,"0")}.${String(dt.getDate()).padStart(2,"0")}`;
+}
+function escapeHtml(str){
+  const div = document.createElement("div");
+  div.textContent = str || "";
+  return div.innerHTML;
+}
+function statusLabel(s){
+  return ({ wishlist:"읽고 싶음", not_started:"시작 전", in_progress:"읽는 중", done:"완료", dropped:"중단" })[s] || "시작 전";
+}
+function pctOf(book){
+  if(!book.totalPages || book.totalPages<=0) return 0;
+  return Math.max(0, Math.min(100, Math.round((book.currentPage/book.totalPages)*100)));
+}
+
+const ROUTINE_DEFS = [
+  { id:"qt", name:"큐티", icon:"🙏", kind:"check", goalDesc:"", goalWhen:"" },
+  { id:"diary", name:"일기", icon:"📔", kind:"note", goalDesc:"", goalWhen:"" },
+  { id:"thoughts", name:"오늘의 생각", icon:"💭", kind:"note", goalDesc:"", goalWhen:"" },
+  { id:"exercise_am", name:"아침운동", icon:"🚴", kind:"check", goalDesc:"", goalWhen:"" },
+  { id:"exercise_pm", name:"저녁운동", icon:"🏋️", kind:"check", goalDesc:"", goalWhen:"" },
+  { id:"wake_early", name:"일찍 일어나기", icon:"🌅", kind:"time", goalTime:"07:00", goalDesc:"", goalWhen:"" },
+  { id:"sleep_early", name:"일찍 자기", icon:"🌙", kind:"time", goalTime:"23:30", goalDesc:"", goalWhen:"" }
+];
+
+async function loadData(){
+  if(tryRenderSharedFromHash()) return;
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) data = JSON.parse(raw);
+  }catch(e){ /* first run */ }
+  if(typeof data.baselineBooks !== "number") data.baselineBooks = 0;
+  if(!Array.isArray(data.routines)){
+    data.routines = ROUTINE_DEFS.map(r => Object.assign({}, r, { entries: [] }));
+    saveData();
+  } else {
+    // 기존 루틴에 새 필드 병합
+    ROUTINE_DEFS.forEach(def => {
+      if(!data.routines.find(r=>r.id===def.id)){
+        data.routines.push(Object.assign({}, def, { entries: [] }));
+      }
+    });
+  }
+  showMbo();
+}
+async function saveData(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }catch(e){ console.error("save failed", e); }
+}
+
+function starsHtml(rating, mini){
+  rating = rating || 0;
+  let s = "";
+  for(let i=1;i<=5;i++) s += i<=rating ? "★" : "☆";
+  return s;
+}
+
+function getFilteredSortedBooks(){
+  let list = data.books.slice();
+  if(filterStatus !== "all") list = list.filter(b=>b.status===filterStatus);
+  if(searchQuery){
+    const q = searchQuery.toLowerCase();
+    list = list.filter(b => (b.title||"").toLowerCase().includes(q) || (b.author||"").toLowerCase().includes(q));
+  }
+  if(sortBy === "updated") list.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  else if(sortBy === "progress") list.sort((a,b)=>pctOf(b)-pctOf(a));
+  else if(sortBy === "title") list.sort((a,b)=>(a.title||"").localeCompare(b.title||"", "ko"));
+  return list;
+}
+
+function dkey(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function parseD(s){ return new Date(s+"T00:00:00"); }
+function daysDiff(a, b){ return Math.round((parseD(b) - parseD(a)) / 86400000); }
+
+// ---------- Generic life-MBO routines ----------
+function getRoutine(id){ return (data.routines||[]).find(r=>r.id===id); }
+function routineEntry(r, dateKey){ return (r.entries||[]).find(e=>e.date===dateKey); }
+function routineSuccess(r, entry){
+  if(!entry) return false;
+  if(r.kind === "check") return !!entry.done;
+  if(r.kind === "note") return !!(entry.note && entry.note.trim());
+  if(r.kind === "time") return !!entry.time && entry.time <= (r.goalTime||"23:59");
+  return false;
+}
+function routineStreak(r){
+  let n = 0;
+  const d = new Date(); d.setHours(0,0,0,0);
+  while(routineSuccess(r, routineEntry(r, dkey(d)))){ n++; d.setDate(d.getDate()-1); }
+  return n;
+}
+function routineSuccessRate(r){
+  const entries = r.entries || [];
+  if(!entries.length) return 0;
+  const succ = entries.filter(e => routineSuccess(r, e)).length;
+  return Math.round((succ / entries.length) * 100);
+}
+
+function upsertRoutineEntry(routineId, dateKey, payload){
+  const r = getRoutine(routineId);
+  if(!r) return;
+  r.entries = r.entries || [];
+  let e = r.entries.find(x=>x.date===dateKey);
+  if(!e){ e = { date: dateKey }; r.entries.push(e); }
+  Object.assign(e, payload);
+}
+function deleteRoutineEntry(routineId, dateKey){
+  const r = getRoutine(routineId);
+  if(!r) return;
+  r.entries = (r.entries||[]).filter(e=>e.date!==dateKey);
+}
+function routineValueLabel(r, entry){
+  if(!entry) return "—";
+  if(r.kind === "check") return entry.done ? "완료" : "미완료";
+  if(r.kind === "note") return entry.note || "—";
+  if(r.kind === "time") return entry.time || "—";
+  return "—";
+}
+
+function estimateFinish(b){
+  if(!b.startDate || !b.totalPages || !(b.currentPage > 0) || b.currentPage >= b.totalPages) return null;
+  const elapsed = Math.max(1, daysDiff(b.startDate, todayStr()) + 1);
+  const pace = b.currentPage / elapsed;
+  const daysLeft = Math.ceil((b.totalPages - b.currentPage) / pace);
+  const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + daysLeft);
+  return { date: dkey(d), pace: Math.round(pace*10)/10 };
+}
+function ensurePlanned(b){
+  if(b.plannedEnd || b.status !== "in_progress" || !b.startDate) return;
+  if(daysDiff(b.startDate, todayStr()) < 1) return;
+  const est = estimateFinish(b);
+  if(est) b.plannedEnd = est.date;
+}
+function earlyBadges(){
+  return data.books
+    .filter(b => b.status === "done" && b.endDate && b.plannedEnd && b.endDate < b.plannedEnd)
+    .map(b => ({ bookId:b.id, title:b.title, days: daysDiff(b.endDate, b.plannedEnd) }));
+}
+function readingDaySet(){
+  const s = new Set();
+  data.books.forEach(b => (b.sessions||[]).forEach(x => { if(x.minutes > 0) s.add(x.date); }));
+  return s;
+}
+function calcStreak(){
+  const days = readingDaySet();
+  const d = new Date(); d.setHours(0,0,0,0);
+  const readToday = days.has(dkey(d));
+  if(!readToday) d.setDate(d.getDate()-1);
+  let n = 0;
+  while(days.has(dkey(d))){ n++; d.setDate(d.getDate()-1); }
+  return { n, readToday };
+}
+
+function renderRewards(){
+  const days = readingDaySet();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayKey = dkey(today);
+
+  // weekly goal (Mon-Sun)
+  const goal = Math.max(1, data.weeklyGoal || 2);
+  const wkStart = new Date(today); wkStart.setDate(wkStart.getDate() - ((wkStart.getDay()+6)%7));
+  const wkEnd = new Date(wkStart); wkEnd.setDate(wkEnd.getDate()+6);
+  const doneThisWeek = data.books.filter(b => b.status === "done" && b.endDate && b.endDate >= dkey(wkStart) && b.endDate <= dkey(wkEnd)).length;
+  document.getElementById("weekGoalText").textContent = doneThisWeek >= goal ? `${doneThisWeek} / ${goal}권 · 달성! 🎉` : `${doneThisWeek} / ${goal}권`;
+  document.getElementById("weekGoalFill").style.width = Math.min(100, doneThisWeek/goal*100) + "%";
+  const gi = document.getElementById("weeklyGoalInput");
+  if(document.activeElement !== gi) gi.value = goal;
+
+  // streak + stickers
+  const st = calcStreak();
+  document.getElementById("streakText").textContent = st.n > 0
+    ? `${st.n}일 연속${st.readToday ? "" : " · 오늘 읽으면 +1"}`
+    : "오늘 첫 독서를 시작해 보세요";
+  let sh = "";
+  for(let i=13;i>=0;i--){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const on = days.has(dkey(d));
+    sh += `<div class="sticker-cell"><div class="sticker ${on ? "on c"+(d.getDate()%5) : ""} ${i===0 ? "today" : ""}" title="${dkey(d)}">${on ? "★" : ""}</div><span>${i===0 ? "오늘" : d.getDate()}</span></div>`;
+  }
+  document.getElementById("stickerRow").innerHTML = sh;
+
+  // bookmarks
+  const readDays = days.size;
+  const earned = Math.floor(readDays / 3);
+  let missed = 0;
+  if(readDays > 0){
+    const last = [...days].sort().pop();
+    missed = Math.max(0, daysDiff(last, todayKey) - 1);
+  }
+  const colors = ["#C9974B","#5E9179","#6FB2F2","#E08575","#A58BD6","#D9B86A","#7FB7A4"];
+  const showN = Math.min(earned, 30);
+  let bm = earned > showN ? `<span class="bm-more">+${earned-showN}</span>` : "";
+  let dormant = 0;
+  for(let k = earned-showN; k < earned; k++){
+    const j = earned-1-k;
+    const p = Math.min(1, Math.max(0, (missed - 2*j) / 3));
+    if(p >= 1) dormant++;
+    const asleep = p >= 1;
+    bm += `<svg class="bm" width="18" height="34" viewBox="0 0 18 34" style="opacity:${asleep ? 0.6 : 1 - 0.75*p}"><path d="M2 1h14v32l-7-6-7 6z" fill="${asleep ? "none" : colors[k%colors.length]}" stroke="${asleep ? "var(--line-strong)" : "none"}" stroke-width="1.5" stroke-dasharray="${asleep ? "3 2" : "0"}"/></svg>`;
+  }
+  document.getElementById("bookmarkRow").innerHTML = bm || `<span class="rc-sub">아직 없어요</span>`;
+  document.getElementById("bookmarkText").textContent = `${earned}개`;
+  document.getElementById("bookmarkNote").textContent =
+    earned === 0 ? `독서한 날(타이머 기록) 3일마다 책갈피 1개를 받아요. 다음 책갈피까지 ${3 - (readDays % 3)}일.`
+    : missed === 0 ? "책갈피가 모두 선명해요. 이대로 이어가 봐요!"
+    : `${missed}일째 쉬는 중이라 책갈피가 흐려지고 있어요${dormant ? ` (잠든 책갈피 ${dormant}개)` : ""}. 사라지진 않아요 — 오늘 읽으면 모두 선명하게 돌아와요.`;
+
+  // badges
+  const total = totalReadCount();
+  const goalNow = getGoal(total);
+  const milestones = [1,5,10,25,50];
+  for(let m=100; m<=goalNow; m+=50) milestones.push(m);
+  const early = earlyBadges();
+  const sumDays = early.reduce((a,e)=>a+e.days, 0);
+  let bh = milestones.map(m => `<div class="badge ${total>=m ? "on" : "locked"}"><div class="badge-icon">${total>=m ? "🏅" : "🔒"}</div><b>${m}권</b><span>${m===1 ? "첫 완독" : "달성"}</span></div>`).join("");
+  bh += early.map(e => `<div class="badge on early"><div class="badge-icon">⚡</div><b>${e.days}일 앞당김</b><span>${escapeHtml(e.title||"")}</span></div>`).join("");
+  document.getElementById("badgeRow").innerHTML = bh;
+  document.getElementById("badgeText").textContent = early.length ? `목표에 총 ${sumDays}일 가까워졌어요` : `${milestones.filter(m=>total>=m).length}개 획득`;
+}
+
+// 회고 통합 구현 (독서 + 전체 MBO)
+function openRetro(isGlobal = false){
+  const years = new Set([String(new Date().getFullYear())]);
+  data.books.forEach(b => { if(b.status === "done" && b.endDate) years.add(b.endDate.slice(0,4)); });
+  const sel = document.getElementById("retroYear");
+  sel.innerHTML = [...years].sort().reverse().map(y => `<option value="${y}">${y}년</option>`).join("");
+  
+  if(isGlobal){
+    renderLifeRetro(sel.value);
+  } else {
+    renderRetro(sel.value);
+  }
+  document.getElementById("retroModal").classList.remove("hidden");
+}
+
+function renderLifeRetro(year){
+  document.getElementById("retroTitle").textContent = `${year} 나의 생활 종합 회고`;
+  const body = document.getElementById("retroBody");
+
+  let routineStatsHtml = "";
+  (data.routines || []).forEach(r => {
+    const rate = routineSuccessRate(r);
+    const streak = routineStreak(r);
+    routineStatsHtml += `
+      <div class="retro-line">
+        <span class="rl-title">${r.icon} ${escapeHtml(r.name)}</span>
+        <span>달성률 ${rate}% · 연속 ${streak}일</span>
+      </div>`;
+  });
+
+  const done = data.books.filter(b => b.status === "done" && b.endDate && b.endDate.startsWith(year));
+  
+  body.innerHTML = `
+    <div class="retro-sec">
+      <h4>🎯 MBO 습관 및 목표 달성 리포트</h4>
+      ${routineStatsHtml || "<p class='rc-note'>기록된 MBO 목표가 없습니다.</p>"}
+    </div>
+    <div class="retro-sec" style="margin-top:20px;">
+      <h4>📚 독서 프로젝트 누적 성과</h4>
+      <div class="retro-grid">
+        <div class="retro-stat"><b>${done.length}</b><span>완독 권수</span></div>
+        <div class="retro-stat"><b>${totalReadCount()}</b><span>누적 통합 권수</span></div>
       </div>
     </div>
-  </section>
+  `;
+}
 
+function renderRetro(year){
+  document.getElementById("retroTitle").textContent = `${year} 독서 회고`;
+  const body = document.getElementById("retroBody");
+  const done = data.books.filter(b => b.status === "done" && b.endDate && b.endDate.startsWith(year));
+  if(done.length === 0){
+    body.innerHTML = `<p class="empty-hint sans">${year}년에 완독한 책이 아직 없어요.</p>`;
+    return;
+  }
+  const minutes = data.books.flatMap(b=>b.sessions||[]).filter(s=>s.date.startsWith(year)).reduce((a,s)=>a+s.minutes, 0);
+  const pages = done.reduce((a,b)=>a+(b.totalPages||0), 0);
+  const maxRating = Math.max(0, ...done.map(b=>b.rating||0));
+  const best = maxRating > 0 ? done.filter(b=>(b.rating||0) === maxRating).slice(0,3) : [];
+  const gc = {}; done.forEach(b => (b.genres||[]).forEach(g => { gc[g] = (gc[g]||0)+1; }));
+  const topG = Object.entries(gc).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const quotes = done.flatMap(b => (b.quotes||[]).map(q => ({q,b}))).sort((x,y)=>(y.b.rating||0)-(x.b.rating||0)).slice(0,5);
+  const takeaways = done.filter(b => b.takeaway);
+  const monthNames = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+  const monthCounts = monthlyDoneCounts(year);
+  const bestIdx = monthCounts.indexOf(Math.max(...monthCounts));
+  body.innerHTML = `
+    <div class="retro-grid">
+      <div class="retro-stat"><b>${done.length}</b><span>완독</span></div>
+      <div class="retro-stat"><b>${Math.round(minutes/60*10)/10}</b><span>독서 시간</span></div>
+      <div class="retro-stat"><b>${pages.toLocaleString()}</b><span>읽은 쪽수</span></div>
+    </div>
+    <div class="retro-sec"><h4>월별 완독 · 가장 많이 읽은 달 ${monthNames[bestIdx]} (${monthCounts[bestIdx]}권)</h4>
+      <div class="bar-chart retro-month-chart">${barChartHtml(monthNames.map((m,i)=>({label:m.replace("월",""), value:monthCounts[i]})))}</div>
+    </div>
+    <div class="retro-sec"><h4>최고 평점</h4>${best.length
+      ? best.map(b=>`<div class="retro-line"><span class="rl-title">${escapeHtml(b.title)}</span><span class="stars-mini">${starsHtml(b.rating)}</span></div>`).join("")
+      : `<p class="rc-note">별점을 남기면 여기에 보여요.</p>`}</div>
+    <div class="retro-sec"><h4>가장 많이 읽은 장르</h4>${topG.length
+      ? topG.map(([g,c])=>`<span class="tag-chip">${escapeHtml(g)} · ${c}권</span>`).join(" ")
+      : `<p class="rc-note">장르 태그를 달면 여기에 보여요.</p>`}</div>
+    <div class="retro-sec"><h4>인상 깊은 문구</h4>${quotes.length
+      ? quotes.map(({q,b})=>`<div class="quote-item">“${escapeHtml(q.text)}”<div class="qpage-tag">${escapeHtml(b.title)}${q.page ? " · p."+q.page : ""}</div></div>`).join("")
+      : `<p class="rc-note">문구를 기록하면 여기에 모여요.</p>`}</div>
+    <div class="retro-sec"><h4>이 책들에서 얻은 것</h4>${takeaways.length
+      ? takeaways.map(b=>`<div class="retro-line"><span class="rl-title">${escapeHtml(b.title)}</span><span>${escapeHtml(b.takeaway)}</span></div>`).join("")
+      : `<p class="rc-note">책 상세 화면에서 "이 책에서 얻은 것"을 적으면 여기에 모여요.</p>`}</div>
+  `;
+}
+
+function totalReadCount(){
+  return (data.baselineBooks||0) + data.books.filter(b=>b.status==="done").length;
+}
+function getGoal(total){
+  let g = 100;
+  while(total >= g) g += 100;
+  return g;
+}
+function encodeShare(obj){
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+}
+function decodeShare(str){
+  return JSON.parse(decodeURIComponent(escape(atob(str))));
+}
+function buildShareSnapshot(){
+  const publicBooks = data.books.filter(b => b.isPublic).map(b => ({
+    title:b.title, author:b.author, publisher:b.publisher, translator:b.translator,
+    status:b.status, currentPage:b.currentPage, totalPages:b.totalPages,
+    startDate:b.startDate, endDate:b.endDate, rating:b.rating||0, genres:b.genres||[],
+    quotes:b.quotes||[], review:b.review||"", takeaway:b.takeaway||"", coverImage:b.coverImage||null,
+    sessions:(b.sessions||[]).reduce((a,s)=>a+s.minutes,0)
+  }));
+  return {
+    ownerName: data.ownerName || "이름 없는 서재",
+    totalCount: totalReadCount(),
+    goal: getGoal(totalReadCount()),
+    books: publicBooks
+  };
+}
+function refreshShareLink(){
+  data.ownerName = document.getElementById("ownerNameInput").value.trim() || data.ownerName || "";
+  const snap = buildShareSnapshot();
+  const code = encodeShare(snap);
+  const url = location.origin + location.pathname + "#shared=" + code;
+  document.getElementById("shareLinkArea").value = url;
+  document.getElementById("shareCopyStatus").textContent = `공개된 책 ${snap.books.length}권 포함`;
+}
+function openShareModal(){
+  document.getElementById("ownerNameInput").value = data.ownerName || "";
+  refreshShareLink();
+  document.getElementById("shareModal").classList.remove("hidden");
+}
+
+function renderSharedCard(b, idx){
+  const pct = b.totalPages ? Math.max(0,Math.min(100,Math.round(b.currentPage/b.totalPages*100))) : 0;
+  const statusColor = STATUS_COLORS[b.status] || STATUS_COLORS.not_started;
+  const coverInner = b.coverImage
+    ? `<img class="cover-img" src="${b.coverImage}" alt="" /><span class="ring-badge">${ringSvg(pct,40,4,"rgba(255,255,255,0.35)","#ffffff","#ffffff")}</span>`
+    : ringSvg(pct, 64, 6, "rgba(255,255,255,0.25)", "#ffffff", "#ffffff");
+  return `
+    <div class="card" data-shared-idx="${idx}">
+      <div class="card-cover" style="background:${statusColor}">${coverInner}</div>
+      <div class="card-body">
+        <div class="card-title">${escapeHtml(b.title||"제목 없음")}</div>
+        ${b.author ? `<div class="card-author sans">${escapeHtml(b.author)}</div>` : ""}
+        <div class="card-props">
+          <span class="pill pill-${b.status}">${statusLabel(b.status)}</span>
+          ${b.rating ? `<span class="stars-mini">${starsHtml(b.rating)}</span>` : ""}
+        </div>
+        ${(b.genres&&b.genres.length) ? `<div class="genre-tags">${b.genres.slice(0,3).map(g=>`<span class="genre-tag">${escapeHtml(g)}</span>`).join("")}</div>` : ""}
+      </div>
+    </div>`;
+}
+
+function renderSharedBookDetail(b){
+  const overlay = document.getElementById("sharedBookOverlay");
+  const quotes = (b.quotes||[]).length
+    ? b.quotes.map(q=>`<div class="quote-item">“${escapeHtml(q.text)}”${q.page?`<div class="qpage-tag">p.${q.page}</div>`:""}</div>`).join("")
+    : `<p class="empty-hint sans">기록된 문구가 없어요.</p>`;
+  overlay.innerHTML = `
+    <div class="shared-detail-box">
+      <button class="back-btn sans" id="sharedBackBtn">← 서재로</button>
+      <h1 class="shared-detail-title">${escapeHtml(b.title||"제목 없음")}</h1>
+      <div class="book-meta-edit" style="pointer-events:none;">
+        ${b.author ? `<div class="meta-row"><span class="meta-label sans">작가</span><span>${escapeHtml(b.author)}</span></div>` : ""}
+        ${b.publisher ? `<div class="meta-row"><span class="meta-label sans">출판사</span><span>${escapeHtml(b.publisher)}</span></div>` : ""}
+        ${b.translator ? `<div class="meta-row"><span class="meta-label sans">옮긴이</span><span>${escapeHtml(b.translator)}</span></div>` : ""}
+      </div>
+      <p class="rc-note">${statusLabel(b.status)} · ${b.totalPages?Math.round(b.currentPage/b.totalPages*100):0}% ${b.startDate?(" · "+fmtDate(b.startDate)):""}${b.endDate?(" → "+fmtDate(b.endDate)):""} · 누적 ${b.sessions||0}분</p>
+      ${b.takeaway ? `<div class="detail-section"><h3 class="sans">이 책에서 얻은 것</h3><p>${escapeHtml(b.takeaway)}</p></div>` : ""}
+      <div class="detail-section"><h3 class="sans">좋았던 문구</h3>${quotes}</div>
+      <div class="detail-section"><h3 class="sans">독후감</h3><p class="r-review">${b.review ? escapeHtml(b.review).replace(/\n/g,"<br>") : `<span class="empty-hint">작성된 독후감이 없어요.</span>`}</p></div>
+    </div>`;
+  overlay.classList.remove("hidden");
+  document.getElementById("sharedBackBtn").addEventListener("click", ()=> overlay.classList.add("hidden"));
+}
+
+function tryRenderSharedFromHash(){
+  const hash = location.hash;
+  if(!hash.startsWith("#shared=")) return false;
+  try{
+    const snap = decodeShare(hash.slice(8));
+    document.getElementById("sharedOwnerName").textContent = snap.ownerName + "님의 서재";
+    document.getElementById("sharedTotalText").textContent = `전체 ${snap.totalCount}권 읽음 · 목표 ${snap.goal}권 · 그중 공개된 책 ${snap.books.length}권`;
+    const grid = document.getElementById("sharedGrid");
+    grid.innerHTML = snap.books.length
+      ? snap.books.map((b,i)=>renderSharedCard(b,i)).join("")
+      : `<p class="empty-hint sans">아직 공개된 책이 없어요.</p>`;
+    grid.querySelectorAll("[data-shared-idx]").forEach(el=>{
+      el.addEventListener("click", ()=> renderSharedBookDetail(snap.books[parseInt(el.dataset.sharedIdx)]));
+    });
+    document.getElementById("homeScreen").classList.add("hidden");
+    document.getElementById("library").classList.add("hidden");
+    document.getElementById("sharedScreen").classList.remove("hidden");
+    return true;
+  }catch(e){
+    console.error("공유 링크를 읽지 못했어요", e);
+    return false;
+  }
+}
+
+// MBO 메인 페이지: 진함/연함 그리드 시각화
+function renderMboMain(){
+  const grid = document.getElementById("mboGrid");
+  const totalBooks = totalReadCount();
+  const todayKey = dkey(new Date());
+
+  // 독서 카드
+  let html = `
+    <div class="mbo-card" data-mbo="reading" style="background: rgba(140, 109, 88, 0.25); border-left:4px solid #8c6d58;">
+      <div class="mbo-icon">📚</div>
+      <div class="mbo-name">독서</div>
+      <div class="mbo-sub">총 ${totalBooks}권 완독</div>
+    </div>`;
+
+  // 루틴 카드들: 오늘 달성 여부 및 달성률에 따라 배경 진함 조정
+  (data.routines||[]).forEach(r=>{
+    const streak = routineStreak(r);
+    const todayOk = routineSuccess(r, routineEntry(r, todayKey));
+    const rate = routineSuccessRate(r);
+    const hasGoal = !!(r.goalDesc || r.goalTime);
+
+    // 진함/연함 스타일 조건
+    let bgStyle = "background: rgba(0, 0, 0, 0.03); opacity: 0.75;"; // 기본 연함
+    if(todayOk){
+      bgStyle = "background: rgba(47, 107, 77, 0.25); font-weight:bold; border-left:4px solid #2F6B4D; opacity: 1.0;"; // 오늘 달성시 완전 진함
+    } else if(rate > 50){
+      bgStyle = "background: rgba(44, 90, 130, 0.15); opacity: 0.9;"; // 달성률 높을 때 보통
+    }
+
+    html += `
+      <div class="mbo-card" data-mbo="${r.id}" style="${bgStyle}">
+        <div class="mbo-icon">${r.icon}</div>
+        <div class="mbo-name">${escapeHtml(r.name)} ${hasGoal ? '🎯' : ''}</div>
+        <div class="mbo-sub">${todayOk ? "✓ 오늘 완료!" : (streak > 0 ? `${streak}일 연속` : "오늘 도전하기")}</div>
+      </div>`;
+  });
+
+  grid.innerHTML = html;
+  grid.querySelectorAll("[data-mbo]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const id = el.dataset.mbo;
+      if(id === "reading") showHome(); else showBridge(id);
+    });
+  });
+}
+
+function routineMiniHeatmapHtml(r, days){
+  const today = new Date(); today.setHours(0,0,0,0);
+  let cells = "";
+  for(let i=days-1;i>=0;i--){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const ok = routineSuccess(r, routineEntry(r, dkey(d)));
+    cells += `<div class="heatmap-cell ${ok?"l3":""}" title="${dkey(d)}"></div>`;
+  }
+  return cells;
+}
+
+// 브릿지 페이지: 넛지(Nudge) 작업 및 책 형태 인터페이스
+function renderBridge(routineId){
+  const r = getRoutine(routineId);
+  if(!r) return;
+  const streak = routineStreak(r);
+
+  document.getElementById("bridgeEyebrow").textContent = "나의 MBO 프로젝트";
+  document.getElementById("bridgeTitle").textContent = `${r.icon} ${r.name}`;
+  document.getElementById("bridgeStreak").textContent = streak > 0 ? `${streak}일 연속 실천 중 🔥` : "아직 실행 목표가 없거나 오늘 실천 전이에요.";
+
+  // 매 페이지마다 동기부여 문구 제공
+  document.getElementById("bridgeMotivationQuote").textContent = getRandomQuote();
+
+  // 넛지 작업 (목표가 구체적이지 않은 경우 보여줌)
+  const nudgeBox = document.getElementById("nudgeBox");
+  const nudgeStep1 = document.getElementById("nudgeStep1");
+  const nudgeStep2 = document.getElementById("nudgeStep2");
+
+  if(!r.goalDesc){
+    nudgeBox.classList.remove("hidden");
+    nudgeStep1.classList.remove("hidden");
+    nudgeStep2.classList.add("hidden");
+
+    document.getElementById("nudgeStep1NextBtn").onclick = ()=>{
+      const val = document.getElementById("nudgeGoalInput").value.trim();
+      if(!val){ alert("목표를 작성해주세요!"); return; }
+      r.goalDesc = val;
+      nudgeStep1.classList.add("hidden");
+      nudgeStep2.classList.remove("hidden");
+    };
+
+    document.getElementById("nudgeSaveBtn").onclick = async ()=>{
+      r.goalWhen = document.getElementById("nudgeWhenInput").value.trim();
+      await saveData();
+      alert("구체적인 MBO 목표가 설정되었습니다!");
+      renderBridge(routineId);
+    };
+  } else {
+    nudgeBox.classList.add("hidden");
+  }
+
+  document.getElementById("bridgeHeatmap").innerHTML = routineMiniHeatmapHtml(r, 84);
+
+  const todayKey = dkey(new Date());
+  const entry = routineEntry(r, todayKey);
+  document.getElementById("bridgeTodayLabel").textContent = todayKey;
+  const widget = document.getElementById("bridgeWidget");
+
+  if(r.kind === "check"){
+    const done = !!(entry && entry.done);
+    widget.innerHTML = `<button class="home-cta" id="routineActionBtn" style="${done?"background:var(--cloth);border-color:var(--cloth);":""}">${done ? "오늘 완료함 ✓" : "오늘 완료로 표시"}</button>`;
+    document.getElementById("routineActionBtn").addEventListener("click", async ()=>{
+      upsertRoutineEntry(routineId, todayKey, { done: !done });
+      await saveData();
+      renderBridge(routineId);
+    });
+  }else if(r.kind === "note"){
+    widget.innerHTML = `
+      <textarea id="routineNoteInput" class="review-area" style="min-height:90px;" placeholder="오늘 기록을 남겨보세요">${escapeHtml((entry&&entry.note)||"")}</textarea>
+      <div class="btn-row" style="justify-content:flex-end; margin-top:10px;"><button id="routineActionBtn">저장</button></div>`;
+    document.getElementById("routineActionBtn").addEventListener("click", async ()=>{
+      const val = document.getElementById("routineNoteInput").value.trim();
+      upsertRoutineEntry(routineId, todayKey, { note: val });
+      await saveData();
+      renderBridge(routineId);
+    });
+  }else if(r.kind === "time"){
+    widget.innerHTML = `
+      <div class="fetch-row" style="align-items:center;">
+        <input type="time" id="routineTimeInput" value="${(entry&&entry.time)||""}" style="width:auto;" />
+        <span class="rc-sub">목표 ${r.goalTime || "23:59"} 이전</span>
+      </div>
+      <div class="btn-row" style="justify-content:flex-end; margin-top:10px;"><button id="routineActionBtn">저장</button></div>
+      ${entry && entry.time ? `<p class="rc-note">${entry.time <= (r.goalTime||"23:59") ? "🎉 목표를 지켰어요!" : "목표보다 늦었어요. 내일 다시 도전해요."}</p>` : ""}`;
+    document.getElementById("routineActionBtn").addEventListener("click", async ()=>{
+      const val = document.getElementById("routineTimeInput").value;
+      if(!val) return;
+      upsertRoutineEntry(routineId, todayKey, { time: val });
+      await saveData();
+      renderBridge(routineId);
+    });
+  }
+}
+
+// 루틴 세부 페이지
+function renderRoutineDetail(routineId){
+  const r = getRoutine(routineId);
+  if(!r) return;
+  document.getElementById("routineDetailTitle").textContent = `${r.icon} ${r.name} 히스토리`;
+  document.getElementById("detailMotivationQuote").textContent = getRandomQuote();
+
+  const entries = (r.entries||[]).slice().sort((a,b)=> b.date.localeCompare(a.date));
+  const successCount = entries.filter(e=>routineSuccess(r,e)).length;
+  const rate = entries.length ? Math.round(successCount/entries.length*100) : 0;
+
+  document.getElementById("routineDetailStats").innerHTML = `
+    <div class="retro-stat"><b>${routineStreak(r)}</b><span>연속일</span></div>
+    <div class="retro-stat"><b>${entries.length}</b><span>총 기록일</span></div>
+    <div class="retro-stat"><b>${rate}%</b><span>달성률</span></div>`;
+
+  const editDate = document.getElementById("routineEditDate");
+  editDate.value = dkey(new Date());
+
+  function renderEditValueInput(){
+    const existing = routineEntry(r, editDate.value);
+    const box = document.getElementById("routineEditValue");
+    if(r.kind === "check"){
+      box.innerHTML = `<select id="routineEditVal"><option value="1" ${existing&&existing.done?"selected":""}>완료</option><option value="0" ${!(existing&&existing.done)?"selected":""}>미완료</option></select>`;
+    }else if(r.kind === "note"){
+      box.innerHTML = `<input type="text" id="routineEditVal" placeholder="내용" value="${escapeHtml((existing&&existing.note)||"")}" />`;
+    }else{
+      box.innerHTML = `<input type="time" id="routineEditVal" value="${(existing&&existing.time)||""}" />`;
+    }
+  }
+  renderEditValueInput();
+  editDate.onchange = renderEditValueInput;
+
+  document.getElementById("routineEditSaveBtn").onclick = async ()=>{
+    const val = document.getElementById("routineEditVal").value;
+    const payload = r.kind === "check" ? { done: val === "1" } : r.kind === "note" ? { note: val } : { time: val };
+    upsertRoutineEntry(routineId, editDate.value, payload);
+    await saveData();
+    renderRoutineDetail(routineId);
+  };
+
+  const list = document.getElementById("routineEntryList");
+  list.innerHTML = entries.length ? entries.map(e => `
+    <div class="retro-line routine-entry-row">
+      <span class="rl-title">${fmtDate(e.date)}${routineSuccess(r,e) ? ' <span class="pill pill-done">달성</span>' : ""}</span>
+      <span>${escapeHtml(routineValueLabel(r,e))}</span>
+      <button class="del" data-del-date="${e.date}">삭제</button>
+    </div>`).join("") : `<p class="empty-hint sans">아직 기록이 없어요.</p>`;
+
+  list.querySelectorAll("[data-del-date]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      deleteRoutineEntry(routineId, btn.dataset.delDate);
+      await saveData();
+      renderRoutineDetail(routineId);
+    });
+  });
+}
+
+function renderHome(){
+  data.baselineBooks = data.baselineBooks || 0;
+  const doneCount = data.books.filter(b=>b.status==="done").length;
+  const inProgressCount = data.books.filter(b=>b.status==="in_progress").length;
+  const totalMinutes = data.books.flatMap(b=>b.sessions||[]).reduce((a,s)=>a+s.minutes,0);
+  const totalHours = Math.round(totalMinutes/60*10)/10;
+  const total = data.baselineBooks + doneCount;
+  const goal = getGoal(total);
+  const blockStart = goal - 100;
+  const within = total - blockStart;
+  const remaining = Math.max(0, goal - total);
+
+  document.getElementById("homeEyebrow").textContent = `${goal}권 읽기 프로젝트`;
+  document.getElementById("homeCount").textContent = total;
+  document.getElementById("homeSub").textContent =
+    `목표까지 ${remaining}권 남았어요 (목표 ${goal}권)`;
+  document.getElementById("homeDone").textContent = doneCount;
+  document.getElementById("homeProgress").textContent = inProgressCount;
+  document.getElementById("homeHours").textContent = totalHours;
+
+  const circumference = 2*Math.PI*78;
+  const dash = circumference * (within/100);
+  const ringFg = document.getElementById("homeRingFg");
+  ringFg.setAttribute("stroke-dasharray", circumference);
+  ringFg.setAttribute("stroke-dashoffset", circumference-dash);
+  document.getElementById("homeRingPct").textContent = within + "%";
+
+  const bi = document.getElementById("baselineInput");
+  if(document.activeElement !== bi) bi.value = data.baselineBooks;
+
+  const shelf = document.getElementById("homeShelf");
+  let shelfHtml = "";
+  for(let i=0;i<100;i++){
+    shelfHtml += `<div class="shelf-mark ${i<within ? "filled":""}"></div>`;
+  }
+  shelf.innerHTML = shelfHtml;
+  renderRewards();
+}
+
+// 히스토리 및 브라우저 탐색
+let historyInit = false;
+function pushHistory(state){
+  if(!historyInit){ history.replaceState(state, ""); historyInit = true; }
+  else{ history.pushState(state, ""); }
+}
+
+const ALL_SCREENS = ["mboScreen","homeScreen","library","bridgeScreen","routineDetailScreen"];
+function hideAllScreens(){
+  ALL_SCREENS.forEach(id => document.getElementById(id).classList.add("hidden"));
+}
+
+function applyMbo(){
+  hideAllScreens();
+  document.getElementById("mboScreen").classList.remove("hidden");
+  renderMboMain();
+}
+function applyHome(){
+  hideAllScreens();
+  document.getElementById("homeScreen").classList.remove("hidden");
+  renderHome();
+}
+function applyLibrary(){
+  hideAllScreens();
+  document.getElementById("library").classList.remove("hidden");
+  renderLibrary();
+}
+function applyDetailDirect(id){
+  currentBookId = id;
+  hideAllScreens();
+  document.getElementById("library").classList.remove("hidden");
+  const overlay = document.getElementById("overlay");
+  overlay.removeAttribute("style");
+  overlay.classList.add("open", "expanded");
+  renderDetail();
+}
+function applyCloseDetailDirect(){
+  const overlay = document.getElementById("overlay");
+  overlay.classList.remove("open", "expanded");
+  overlay.removeAttribute("style");
+  currentBookId = null;
+  applyLibrary();
+}
+let currentBridgeId = null;
+let currentRoutineDetailId = null;
+function applyBridge(routineId){
+  currentBridgeId = routineId;
+  hideAllScreens();
+  document.getElementById("bridgeScreen").classList.remove("hidden");
+  renderBridge(routineId);
+}
+function applyRoutineDetail(routineId){
+  currentRoutineDetailId = routineId;
+  hideAllScreens();
+  document.getElementById("routineDetailScreen").classList.remove("hidden");
+  renderRoutineDetail(routineId);
+}
+
+window.addEventListener("popstate", (e)=>{
+  const state = e.state || { view:"mbo" };
+  if(state.view === "detail") applyDetailDirect(state.id);
+  else if(state.view === "library"){
+    if(document.getElementById("overlay").classList.contains("open")) applyCloseDetailDirect();
+    else applyLibrary();
+  }
+  else if(state.view === "home") applyHome();
+  else if(state.view === "bridge") applyBridge(state.id);
+  else if(state.view === "routineDetail") applyRoutineDetail(state.id);
+  else applyMbo();
+});
+
+function showMbo(){
+  applyMbo();
+  pushHistory({ view:"mbo" });
+}
+function showHome(){
+  applyHome();
+  pushHistory({ view:"home" });
+}
+function showLibrary(){
+  applyLibrary();
+  pushHistory({ view:"library" });
+}
+function showBridge(routineId){
+  applyBridge(routineId);
+  pushHistory({ view:"bridge", id:routineId });
+}
+function showRoutineDetail(routineId){
+  applyRoutineDetail(routineId);
+  pushHistory({ view:"routineDetail", id:routineId });
+}
+
+function barChartHtml(items){
+  const max = Math.max(1, ...items.map(i=>i.value));
+  return items.map(i=>`
+    <div class="bar-col">
+      <div class="bar-val">${i.value}</div>
+      <div class="bar-track"><div class="bar" style="height:${Math.round(i.value/max*100)}%"></div></div>
+      <div class="bar-label">${i.label}</div>
+    </div>`).join("");
+}
+
+let statsMonthYear = new Date().getFullYear();
+function renderStats(){
+  const dayNames = ["일","월","화","수","목","금","토"];
+  const byDate = {};
+  data.books.flatMap(b=>b.sessions||[]).forEach(s=>{ byDate[s.date] = (byDate[s.date]||0) + s.minutes; });
+  const week = [];
+  for(let i=6;i>=0;i--){
+    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-i);
+    const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    week.push({ label: i===0 ? "오늘" : dayNames[d.getDay()], value: byDate[key]||0 });
+  }
+  document.getElementById("statsWeek").innerHTML = barChartHtml(week);
+
+  const myEl = document.getElementById("statsMonthYearSelect");
+  const myYears = yearsWithData();
+  if(myEl.dataset.filled !== myYears.join(",")){
+    myEl.innerHTML = myYears.map(y=>`<option value="${y}">${y}년</option>`).join("");
+    myEl.dataset.filled = myYears.join(",");
+  }
+  myEl.value = String(statsMonthYear);
+  const monthLabels = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+  const monthVals = monthlyDoneCounts(String(statsMonthYear));
+  document.getElementById("statsMonth").innerHTML = barChartHtml(monthLabels.map((m,i)=>({label:m.replace("월",""), value:monthVals[i]})));
+
+  const yearCount = {};
+  const yearBestMonth = {};
+  data.books.filter(b=>b.status==="done" && b.endDate).forEach(b=>{
+    const y = b.endDate.slice(0,4), m = b.endDate.slice(5,7);
+    yearCount[y] = (yearCount[y]||0) + 1;
+    yearBestMonth[y] = yearBestMonth[y] || {};
+    yearBestMonth[y][m] = (yearBestMonth[y][m]||0) + 1;
+  });
+  const years = Object.keys(yearCount).sort();
+  if(years.length === 0){
+    document.getElementById("statsYear").innerHTML = `<div class="empty-hint sans" style="padding:6px 0;">완독한 책의 완료일이 쌓이면 연도별 그래프가 보여요.</div>`;
+  }else{
+    document.getElementById("statsYear").innerHTML = barChartHtml(years.map(y=>{
+      const months = yearBestMonth[y];
+      const bestM = Object.entries(months).sort((a,b)=>b[1]-a[1])[0];
+      return { label:`${y.slice(2)}'  ${parseInt(bestM[0])}월↑`, value: yearCount[y] };
+    }));
+  }
+
+  const genreCount = {};
+  data.books.forEach(b=>(b.genres||[]).forEach(g=>{ genreCount[g] = (genreCount[g]||0)+1; }));
+  const genres = Object.entries(genreCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const gEl = document.getElementById("statsGenre");
+  if(genres.length === 0){
+    gEl.innerHTML = `<div class="empty-hint sans" style="padding:6px 0;">책 상세 화면에서 장르 태그를 달면, 어떤 분야를 많이 읽는지 여기에 보여요.</div>`;
+  }else{
+    const gmax = genres[0][1];
+    gEl.innerHTML = genres.map(([name,cnt])=>`
+      <div class="hbar-row">
+        <span class="hbar-label sans">${escapeHtml(name)}</span>
+        <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(cnt/gmax*100)}%"></div></div>
+        <span class="hbar-num sans">${cnt}</span>
+      </div>`).join("");
+  }
+}
+
+function yearsWithData(){
+  const ys = new Set([String(new Date().getFullYear()), String(new Date().getFullYear()+1)]);
+  data.books.forEach(b=>{
+    if(b.endDate) ys.add(b.endDate.slice(0,4));
+    if(b.startDate) ys.add(b.startDate.slice(0,4));
+    (b.sessions||[]).forEach(s=> ys.add(s.date.slice(0,4)));
+  });
+  return [...ys].sort();
+}
+function monthlyDoneCounts(year){
+  const counts = new Array(12).fill(0);
+  data.books.forEach(b=>{
+    if(b.status==="done" && b.endDate && b.endDate.startsWith(year)) counts[parseInt(b.endDate.slice(5,7))-1]++;
+  });
+  return counts;
+}
+
+let contribYear = new Date().getFullYear();
+function renderContrib(){
+  const sel = document.getElementById("contribYearSelect");
+  const years = yearsWithData();
+  if(sel.dataset.filled !== years.join(",")){
+    sel.innerHTML = years.map(y=>`<option value="${y}">${y}년</option>`).join("");
+    sel.dataset.filled = years.join(",");
+  }
+  sel.value = String(contribYear);
+  const year = contribYear;
+  const byDate = {};
+  data.books.flatMap(b=>b.sessions||[]).forEach(s=>{ byDate[s.date] = (byDate[s.date]||0) + s.minutes; });
+  const keyOf = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const jan1 = new Date(year,0,1);
+  const start = new Date(jan1); start.setDate(start.getDate() - jan1.getDay());
+  const dec31 = new Date(year,11,31);
+
+  let cells = "", i = 0, activeDays = 0, totalMin = 0;
+  const monthAt = {};
+  for(const d = new Date(start); d <= dec31; d.setDate(d.getDate()+1), i++){
+    if(d < jan1){ cells += `<div class="heatmap-cell empty"></div>`; continue; }
+    if(d.getDate() === 1) monthAt[Math.floor(i/7)] = (d.getMonth()+1)+"월";
+    const min = byDate[keyOf(d)] || 0;
+    let level = "";
+    if(min > 0){ activeDays++; totalMin += min; level = min<=15 ? "l1" : min<=30 ? "l2" : min<=60 ? "l3" : "l4"; }
+    cells += `<div class="heatmap-cell ${level}" title="${keyOf(d)}${min?" · "+min+"분":""}"></div>`;
+  }
+  const cols = Math.ceil(i/7);
+  let months = "";
+  for(let c=0;c<cols;c++) months += `<span>${monthAt[c]||""}</span>`;
+
+  document.getElementById("contribGrid").innerHTML = cells;
+  document.getElementById("contribMonths").innerHTML = months;
+  document.getElementById("contribTitle").textContent =
+    `${year}년 · ${activeDays}일 독서 (총 ${Math.round(totalMin/60*10)/10}시간)`;
+}
+
+function renderLibrary(){
+  renderStats();
+  renderContrib();
+
+  const list = getFilteredSortedBooks();
+  const count = data.books.length;
+  document.getElementById("libCount").textContent = count > 0 ? `${count}권 기록 중` : "";
+
+  const grid = document.getElementById("grid");
+  const board = document.getElementById("board");
+
+  if(viewMode === "grid"){
+    grid.classList.remove("hidden"); board.classList.add("hidden");
+    let html = "";
+    list.forEach(b=>{
+      const pct = pctOf(b);
+      const totalMinutes = (b.sessions||[]).reduce((a,s)=>a+s.minutes,0);
+      const timeStr = totalMinutes >= 60 ? `${Math.floor(totalMinutes/60)}시간 ${totalMinutes%60}분` : `${totalMinutes}분`;
+      const bottomLine = b.status === "done"
+        ? `완료 · 총 ${timeStr}`
+        : `${b.startDate ? fmtDate(b.startDate) : "시작 전"}${b.endDate ? " → "+fmtDate(b.endDate) : ""}`;
+      const statusColor = STATUS_COLORS[b.status] || STATUS_COLORS.not_started;
+      const coverInner = b.coverImage
+        ? `<img class="cover-img" src="${b.coverImage}" alt="" />
+           <span class="ring-badge">${ringSvg(pct, 40, 4, "rgba(255,255,255,0.35)", "#ffffff", "#ffffff")}</span>`
+        : ringSvg(pct, 64, 6, "rgba(255,255,255,0.25)", "#ffffff", "#ffffff");
+      html += `
+        <div class="card" data-id="${b.id}">
+          <div class="card-cover" style="background:${statusColor}">
+            <button class="visibility-toggle ${b.isPublic?"is-public":""}" data-toggle-id="${b.id}" title="${b.isPublic?"공개 중 · 눌러서 비공개로":"비공개 · 눌러서 공개로"}" type="button">${b.isPublic ? "🌐" : "🔒"}</button>
+            ${coverInner}
+          </div>
+          <div class="card-body">
+            <div class="card-title">${escapeHtml(b.title || "제목 없음")}</div>
+            ${b.author ? `<div class="card-author sans">${escapeHtml(b.author)}</div>` : ""}
+            <div class="card-props">
+              <span class="pill pill-${b.status}">${statusLabel(b.status)}</span>
+              ${b.rating ? `<span class="stars-mini">${starsHtml(b.rating)}</span>` : ""}
+            </div>
+            ${(b.genres&&b.genres.length) ? `<div class="genre-tags">${b.genres.slice(0,3).map(g=>`<span class="genre-tag">${escapeHtml(g)}</span>`).join("")}</div>` : ""}
+            <div class="card-bottom sans">${bottomLine}</div>
+          </div>
+        </div>
+      `;
+    });
+    html += `
+      <div class="card new" id="newBookCard">
+        <div class="plus">+</div>
+        <span class="label sans">새 책 추가</span>
+      </div>
+    `;
+    grid.innerHTML = html;
+    grid.querySelectorAll(".card[data-id]").forEach(el=>{
+      el.addEventListener("click", ()=> openBook(el.dataset.id, el));
+    });
+    grid.querySelectorAll(".visibility-toggle").forEach(el=>{
+      el.addEventListener("click", async (e)=>{
+        e.stopPropagation();
+        const bk = data.books.find(x=>x.id===el.dataset.toggleId);
+        if(!bk) return;
+        bk.isPublic = !bk.isPublic;
+        bk.updatedAt = Date.now();
+        await saveData();
+        renderLibrary();
+      });
+    });
+    document.getElementById("newBookCard").addEventListener("click", openAddModal);
+  }else{
+    grid.classList.add("hidden"); board.classList.remove("hidden");
+    const cols = [
+      {key:"wishlist", label:"읽고 싶음"},
+      {key:"not_started", label:"시작 전"},
+      {key:"in_progress", label:"읽는 중"},
+      {key:"done", label:"완료"},
+      {key:"dropped", label:"중단"}
+    ];
+    let html = "";
+    cols.forEach(col=>{
+      const items = list.filter(b=>b.status===col.key);
+      html += `<div class="board-col"><h4>${col.label} · ${items.length}</h4>`;
+      items.forEach(b=>{
+        html += `<div class="board-card" data-id="${b.id}">
+          <div class="bc-title">${escapeHtml(b.title||"제목 없음")}</div>
+          <div class="bc-pct">${pctOf(b)}%</div>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+    board.innerHTML = html;
+    board.querySelectorAll(".board-card").forEach(el=>{
+      el.addEventListener("click", ()=> openBook(el.dataset.id, el));
+    });
+  }
+}
+
+function exportData(){
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `book-library-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function generateReport(){  
+  const doneCount = data.books.filter(b=>b.status==="done").length;
+  const total = (data.baselineBooks||0) + doneCount;
+  const goalNow = getGoal(total);
+  const totalMinutes = data.books.flatMap(b=>b.sessions||[]).reduce((a,s)=>a+s.minutes,0);
+
+  const bookPages = data.books.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(b=>{
+    const pct = pctOf(b);
+    const tMin = (b.sessions||[]).reduce((a,s)=>a+s.minutes,0);
+    const tStr = tMin>=60 ? `${Math.floor(tMin/60)}시간 ${tMin%60}분` : `${tMin}분`;
+    const quotes = (b.quotes||[]).length
+      ? b.quotes.map(q=>`<div class="r-quote">“${escapeHtml(q.text)}”${q.page?` <span class="r-qpage">p.${q.page}</span>`:""}</div>`).join("")
+      : `<p class="r-empty">기록된 문구가 없어요.</p>`;
+    return `
+      <section class="r-book">
+        <h2>${escapeHtml(b.title||"제목 없음")}</h2>
+        <div class="r-meta">
+          ${b.author ? `<div><b>작가</b> ${escapeHtml(b.author)}</div>` : ""}
+          ${b.publisher ? `<div><b>출판사</b> ${escapeHtml(b.publisher)}</div>` : ""}
+          ${b.translator ? `<div><b>옮긴이</b> ${escapeHtml(b.translator)}</div>` : ""}
+          <div><b>상태</b> ${statusLabel(b.status)} · ${pct}%</div>
+          ${b.startDate ? `<div><b>시작일</b> ${fmtDate(b.startDate)}</div>` : ""}
+          ${b.endDate ? `<div><b>완료일</b> ${fmtDate(b.endDate)}</div>` : ""}
+          <div><b>누적 독서 시간</b> ${tStr}</div>
+          ${b.rating ? `<div><b>별점</b> ${starsHtml(b.rating)}</div>` : ""}
+          ${(b.genres&&b.genres.length) ? `<div><b>장르</b> ${b.genres.map(escapeHtml).join(", ")}</div>` : ""}
+        </div>
+        ${b.takeaway ? `<h3>이 책에서 얻은 것</h3><p class="r-review">${escapeHtml(b.takeaway)}</p>` : ""}
+        <h3>좋았던 문구</h3>
+        ${quotes}
+        <h3>독후감</h3>
+        <p class="r-review">${b.review ? escapeHtml(b.review).replace(/\n/g,"<br>") : `<span class="r-empty">작성된 독후감이 없어요.</span>`}</p>
+      </section>
+    `;
+  }).join("");
+
+  const libraryRows = data.books.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(b=>
+    `<tr><td>${escapeHtml(b.title||"제목 없음")}</td><td>${escapeHtml(b.author||"—")}</td><td>${statusLabel(b.status)}</td><td>${pctOf(b)}%</td></tr>`
+  ).join("");
+
+  const html = `
+    <!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>나의 서재 리포트</title>
+    <style>
+      body{font-family:"Iowan Old Style",Georgia,serif; color:#23303C; max-width:720px; margin:40px auto; padding:0 20px; line-height:1.6;}
+      h1{font-size:30px; margin-bottom:4px;}
+      .r-cover-sub{color:#6b7280; font-size:14px; margin-bottom:40px;}
+      .r-stats{display:flex; gap:30px; margin-bottom:40px; font-size:14px;}
+      .r-stats b{display:block; font-size:22px;}
+      table{width:100%; border-collapse:collapse; margin-bottom:50px; font-size:13.5px;}
+      th,td{border-bottom:1px solid #ddd; padding:8px 6px; text-align:left;}
+      .r-book{ page-break-before:always; padding-top:20px; }
+      .r-book h2{font-size:22px; border-bottom:2px solid #23303C; padding-bottom:8px;}
+      .r-meta{font-size:13.5px; color:#444; margin:14px 0 20px; display:flex; flex-direction:column; gap:3px;}
+      .r-meta b{display:inline-block; width:90px; color:#888; font-weight:600;}
+      h3{font-size:13px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin:22px 0 10px;}
+      .r-quote{background:#FAEBDD; border-left:3px solid #D9730D; padding:10px 14px; margin-bottom:8px; border-radius:4px; font-size:14px;}
+      .r-qpage{color:#888; font-size:11px;}
+      .r-review{font-size:14.5px;}
+      .r-empty{color:#999; font-style:normal; font-size:13px;}
+      @media print{ .r-book{ page-break-before:always; } }
+    </style></head><body>
+      <h1>📚 나의 서재 리포트</h1>
+      <p class="r-cover-sub">${todayStr()} 기준 · ${goalNow}권 프로젝트</p>
+      <div class="r-stats">
+        <div><b>${total}</b>/${goalNow}권</div>
+        <div><b>${doneCount}</b>완독</div>
+        <div><b>${Math.round(totalMinutes/60*10)/10}</b>시간</div>
+      </div>
+      <h3>서재 목록</h3>
+      <table><tr><th>제목</th><th>작가</th><th>상태</th><th>진행률</th></tr>${libraryRows}</table>
+      ${bookPages}
+      <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script>
+    </body></html>
+  `;
+  const blob = new Blob([html], { type:"text/html" });
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+}
+
+function downloadBlob(content, filename, type){
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function bookMinutes(b){ return (b.sessions||[]).reduce((a,s)=>a+s.minutes,0); }
+function booksRows(){
+  return data.books.map(b=>({
+    "제목": b.title||"", "작가": b.author||"", "출판사": b.publisher||"", "옮긴이": b.translator||"",
+    "상태": statusLabel(b.status), "진행률(%)": pctOf(b), "현재 페이지": b.currentPage||0, "총 페이지": b.totalPages||0,
+    "시작일": b.startDate||"", "완료일": b.endDate||"", "누적 독서시간(분)": bookMinutes(b),
+    "별점": b.rating||"", "장르": (b.genres||[]).join(", "), "이 책에서 얻은 것": b.takeaway||"", "독후감": b.review||""
+  }));
+}
+function exportXlsx(){
+  if(typeof XLSX === "undefined"){ alert("Excel 라이브러리를 불러오지 못했어요. 인터넷 연결을 확인하거나 CSV로 내보내 주세요."); return; }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(booksRows()), "책 목록");
+  const quotes = data.books.flatMap(b=>(b.quotes||[]).map(q=>({ "책": b.title, "문구": q.text, "페이지": q.page||"" })));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(quotes.length?quotes:[{ "책":"", "문구":"", "페이지":"" }]), "문구");
+  const sessions = data.books.flatMap(b=>(b.sessions||[]).map(s=>({ "책": b.title, "날짜": s.date, "독서시간(분)": s.minutes })));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sessions.length?sessions:[{ "책":"", "날짜":"", "독서시간(분)":"" }]), "독서 기록");
+  XLSX.writeFile(wb, `나의서재-${todayStr()}.xlsx`);
+}
+function exportCsv(){
+  const rows = booksRows();
+  const keys = Object.keys(rows[0] || {"제목":""});
+  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+  const csv = [keys.map(esc).join(",")].concat(rows.map(r=>keys.map(k=>esc(r[k])).join(","))).join("\r\n");
+  downloadBlob("\uFEFF"+csv, `나의서재-${todayStr()}.csv`, "text/csv;charset=utf-8");
+}
+function exportMarkdown(){
+  const doneCount = data.books.filter(b=>b.status==="done").length;
+  const total = (data.baselineBooks||0) + doneCount;
+  const goalNow = getGoal(total);
+  let md = `# 나의 서재\n\n${goalNow}권 프로젝트 · ${total}/${goalNow}권 (${todayStr()} 기준)\n\n`;
+  data.books.forEach(b=>{
+    md += `## ${b.title||"제목 없음"}\n\n`;
+    if(b.author) md += `- 작가: ${b.author}\n`;
+    if(b.publisher) md += `- 출판사: ${b.publisher}\n`;
+    if(b.translator) md += `- 옮긴이: ${b.translator}\n`;
+    md += `- 상태: ${statusLabel(b.status)} (${pctOf(b)}%)\n`;
+    if(b.startDate) md += `- 시작일: ${b.startDate}\n`;
+    if(b.endDate) md += `- 완료일: ${b.endDate}\n`;
+    md += `- 누적 독서시간: ${bookMinutes(b)}분\n`;
+    if(b.rating) md += `- 별점: ${starsHtml(b.rating)}\n`;
+    if((b.genres||[]).length) md += `- 장르: ${b.genres.join(", ")}\n`;
+    if(b.takeaway) md += `- 이 책에서 얻은 것: ${b.takeaway}\n`;
+    md += `\n### 좋았던 문구\n\n`;
+    md += (b.quotes||[]).length ? b.quotes.map(q=>`> ${q.text}${q.page?` (p.${q.page})`:""}\n`).join("\n") : "_기록 없음_\n";
+    md += `\n### 독후감\n\n${b.review||"_작성된 독후감 없음_"}\n\n---\n\n`;
+  });
+  downloadBlob(md, `나의서재-${todayStr()}.md`, "text/markdown;charset=utf-8");
+}
+function handleExport(fmt){
+  if(fmt==="pdf") generateReport();
+  else if(fmt==="xlsx") exportXlsx();
+  else if(fmt==="md") exportMarkdown();
+  else if(fmt==="csv") exportCsv();
+  else if(fmt==="json") exportData();
+  document.getElementById("exportModal").classList.add("hidden");
+}
+
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const parsed = JSON.parse(e.target.result);
+      if(!parsed || !Array.isArray(parsed.books)) throw new Error("invalid");
+      if(!confirm("가져온 파일로 지금 기록을 덮어쓸까요? 되돌릴 수 없어요.")) return;
+      data = parsed;
+      data.baselineBooks = data.baselineBooks || 0;
+      await saveData();
+      renderHome();
+      renderLibrary();
+      alert("복원됐어요.");
+    }catch(err){
+      alert("파일을 읽지 못했어요. 올바른 백업 파일인지 확인해 주세요.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById("baselineInput").addEventListener("change", async (e)=>{
+  data.baselineBooks = Math.max(0, parseInt(e.target.value)||0);
+  await saveData();
+  renderHome();
+});
+document.getElementById("enterLibraryBtn").addEventListener("click", showLibrary);
+document.getElementById("backToMboBtn").addEventListener("click", showMbo);
+document.getElementById("bridgeBackBtn").addEventListener("click", showMbo);
+document.getElementById("routineDetailBackBtn").addEventListener("click", ()=> showBridge(currentRoutineDetailId));
+document.getElementById("goRoutineDetailBtn").addEventListener("click", ()=> showRoutineDetail(currentBridgeId));
+document.getElementById("openShareBtn").addEventListener("click", openShareModal);
+document.getElementById("closeShareBtn").addEventListener("click", ()=> document.getElementById("shareModal").classList.add("hidden"));
+document.getElementById("regenShareBtn").addEventListener("click", refreshShareLink);
+document.getElementById("ownerNameInput").addEventListener("input", refreshShareLink);
+document.getElementById("copyShareBtn").addEventListener("click", async ()=>{
+  const area = document.getElementById("shareLinkArea");
+  area.select();
+  try{ await navigator.clipboard.writeText(area.value); document.getElementById("shareCopyStatus").textContent = "복사했어요!"; }
+  catch(e){ document.getElementById("shareCopyStatus").textContent = "복사 실패 — 직접 선택해서 복사해 주세요."; }
+});
+document.getElementById("contribYearSelect").addEventListener("change", (e)=>{
+  contribYear = parseInt(e.target.value);
+  renderContrib();
+});
+document.getElementById("statsMonthYearSelect").addEventListener("change", (e)=>{
+  statsMonthYear = parseInt(e.target.value);
+  renderStats();
+});
+document.getElementById("markAllPublicBtn").addEventListener("click", async ()=>{
+  if(!confirm("서재의 모든 책을 공개로 바꿀까요?")) return;
+  data.books.forEach(b=> b.isPublic = true);
+  await saveData(); renderLibrary();
+});
+document.getElementById("markAllPrivateBtn").addEventListener("click", async ()=>{
+  data.books.forEach(b=> b.isPublic = false);
+  await saveData(); renderLibrary();
+});
+document.getElementById("weeklyGoalInput").addEventListener("change", async (e)=>{
+  data.weeklyGoal = Math.max(1, parseInt(e.target.value) || 2);
+  await saveData();
+  renderRewards();
+});
+
+document.getElementById("openLifeRetroBtn").addEventListener("click", () => openRetro(true));
+document.getElementById("openRetroBtn").addEventListener("click", () => openRetro(false));
+document.getElementById("openRetroBtn2").addEventListener("click", () => openRetro(false));
+document.getElementById("closeRetroBtn").addEventListener("click", ()=> document.getElementById("retroModal").classList.add("hidden"));
+document.getElementById("retroYear").addEventListener("change", (e)=> renderRetro(e.target.value));
+document.getElementById("backHomeBtn").addEventListener("click", showHome);
+document.getElementById("searchInput").addEventListener("input", (e)=>{
+  searchQuery = e.target.value.trim();
+  renderLibrary();
+});
+document.getElementById("statusChips").addEventListener("click", (e)=>{
+  const btn = e.target.closest(".chip");
+  if(!btn) return;
+  filterStatus = btn.dataset.status;
+  document.querySelectorAll("#statusChips .chip").forEach(c=>c.classList.remove("active"));
+  btn.classList.add("active");
+  renderLibrary();
+});
+document.getElementById("sortSelect").addEventListener("change", (e)=>{
+  sortBy = e.target.value;
+  renderLibrary();
+});
+document.getElementById("viewGridBtn").addEventListener("click", ()=>{
+  viewMode = "grid";
+  document.getElementById("viewGridBtn").classList.add("active");
+  document.getElementById("viewBoardBtn").classList.remove("active");
+  renderLibrary();
+});
+document.getElementById("viewBoardBtn").addEventListener("click", ()=>{
+  viewMode = "board";
+  document.getElementById("viewBoardBtn").classList.add("active");
+  document.getElementById("viewGridBtn").classList.remove("active");
+  renderLibrary();
+});
+document.getElementById("openExportBtn").addEventListener("click", ()=> document.getElementById("exportModal").classList.remove("hidden"));
+document.getElementById("closeExportBtn").addEventListener("click", ()=> document.getElementById("exportModal").classList.add("hidden"));
+document.querySelectorAll(".export-item").forEach(btn=> btn.addEventListener("click", ()=> handleExport(btn.dataset.fmt)));
+document.getElementById("importBtn").addEventListener("click", ()=> document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change", (e)=>{
+  if(e.target.files[0]) importData(e.target.files[0]);
+  e.target.value = "";
+});
+
+function openAddModal(){
+  document.getElementById("fSearchQuery").value = "";
+  document.getElementById("fTitle").value = "";
+  document.getElementById("fAuthor").value = "";
+  document.getElementById("fPublisher").value = "";
+  document.getElementById("fTranslator").value = "";
+  document.getElementById("fPages").value = "";
+  document.getElementById("fetchStatus").textContent = "";
+  lastFetchedCover = null;
+  document.getElementById("fStatus").value = "not_started";
+  document.getElementById("addModal").classList.remove("hidden");
+}
+function closeAddModal(){
+  document.getElementById("addModal").classList.add("hidden");
+}
+
+async function fetchBookInfo(){
+  const q = document.getElementById("fSearchQuery").value.trim() || document.getElementById("fTitle").value.trim();
+  const statusEl = document.getElementById("fetchStatus");
+  if(!q){ statusEl.textContent = "검색어를 입력해 주세요."; return; }
+  statusEl.textContent = "검색 중…";
+  try{
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}`);
+    const json = await res.json();
+    const item = json.items && json.items[0];
+    if(!item){ statusEl.textContent = "검색 결과가 없어요. 직접 입력해 주세요."; return; }
+    const info = item.volumeInfo || {};
+    document.getElementById("fTitle").value = info.title || q;
+    document.getElementById("fAuthor").value = (info.authors || []).join(", ");
+    document.getElementById("fPublisher").value = info.publisher || "";
+    if(info.pageCount) document.getElementById("fPages").value = info.pageCount;
+    lastFetchedCover = info.imageLinks ? (info.imageLinks.thumbnail || info.imageLinks.smallThumbnail || null) : null;
+    if(lastFetchedCover) lastFetchedCover = lastFetchedCover.replace("http://","https://");
+    statusEl.textContent = lastFetchedCover
+      ? "정보와 표지를 가져왔어요. 옮긴이나 페이지 수는 확인 후 필요하면 수정해 주세요."
+      : "정보를 가져왔어요 (표지 이미지는 없었어요). 옮긴이나 페이지 수는 확인해 주세요.";
+  }catch(e){
+    statusEl.textContent = "정보를 가져오지 못했어요. 직접 입력해 주세요.";
+  }
+}
+
+async function confirmAddBook(){
+  const title = document.getElementById("fTitle").value.trim();
+  if(!title){ document.getElementById("fetchStatus").textContent = "제목은 꼭 입력해 주세요."; return; }
+  const book = {
+    id: "book_"+Date.now(),
+    title,
+    author: document.getElementById("fAuthor").value.trim(),
+    publisher: document.getElementById("fPublisher").value.trim(),
+    translator: document.getElementById("fTranslator").value.trim(),
+    totalPages: Math.max(0, parseInt(document.getElementById("fPages").value)||0),
+    currentPage: 0,
+    status: document.getElementById("fStatus").value,
+    startDate: document.getElementById("fStatus").value === "in_progress" ? todayStr() : null,
+    takeaway: "",
+    isPublic: false,
+    plannedEnd: null,
+    endDate: null,
+    sessions: [],
+    quotes: [],
+    review: "",
+    coverColor: COVER_PALETTE[data.books.length % COVER_PALETTE.length],
+    coverImage: lastFetchedCover,
+    rating: 0,
+    genres: [],
+    updatedAt: Date.now()
+  };
+  data.books.push(book);
+  await saveData();
+  closeAddModal();
+  renderLibrary();
+}
+
+document.getElementById("fetchInfoBtn").addEventListener("click", fetchBookInfo);
+document.getElementById("cancelAddBtn").addEventListener("click", closeAddModal);
+document.getElementById("confirmAddBtn").addEventListener("click", confirmAddBook);
+
+function openBook(id, cardEl){
+  currentBookId = id;
+  timer = { running:false, startTs:null, elapsed:0 };
+
+  const rect = cardEl.getBoundingClientRect();
+  const overlay = document.getElementById("overlay");
+  overlay.style.top = rect.top+"px";
+  overlay.style.left = rect.left+"px";
+  overlay.style.width = rect.width+"px";
+  overlay.style.height = rect.height+"px";
+  overlay.style.borderRadius = "6px";
+  overlay.classList.add("open");
+  cardRectCache = rect;
+
+  renderDetail();
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      overlay.style.top = "0px";
+      overlay.style.left = "0px";
+      overlay.style.width = "100vw";
+      overlay.style.height = "100vh";
+      overlay.style.borderRadius = "0px";
+      overlay.classList.add("expanded");
+    });
+  });
+  pushHistory({ view:"detail", id });
+}
+
+function closeBook(){
+  if(timer.running){ stopAndSaveSession(false); }
+  const overlay = document.getElementById("overlay");
+  overlay.classList.remove("expanded");
+  if(cardRectCache){
+    overlay.style.top = cardRectCache.top+"px";
+    overlay.style.left = cardRectCache.left+"px";
+    overlay.style.width = cardRectCache.width+"px";
+    overlay.style.height = cardRectCache.height+"px";
+    overlay.style.borderRadius = "6px";
+  }
+  setTimeout(()=>{
+    overlay.classList.remove("open");
+    overlay.removeAttribute("style");
+    currentBookId = null;
+    renderLibrary();
+  }, 380);
+  pushHistory({ view:"library" });
+}
+
+function getBook(){
+  return data.books.find(b=>b.id === currentBookId);
+}
+
+async function updateBook(patch){
+  const b = getBook();
+  if(!b) return;
+  Object.assign(b, patch, { updatedAt: Date.now() });
+  if(!("plannedEnd" in patch)) ensurePlanned(b);
+  await saveData();
+}
+
+function renderDetail(){
+  const b = getBook();
+  if(!b) return;
+  const pct = pctOf(b);
+  const circumference = 2*Math.PI*30;
+  const dash = circumference * (pct/100);
+
+  const totalMinutes = b.sessions.reduce((a,s)=>a+s.minutes,0);
+  const totalMinutesStr = totalMinutes >= 60 ? `${Math.floor(totalMinutes/60)}시간 ${totalMinutes%60}분` : `${totalMinutes}분`;
+
+  const quotesHtml = b.quotes.length === 0
+    ? `<div class="empty-hint">아직 기록한 문구가 없어요.</div>`
+    : b.quotes.slice().reverse().map(q=>`
+      <div class="quote-item">
+        <button class="del" data-qid="${q.id}">삭제</button>
+        “${escapeHtml(q.text)}”
+        ${q.page ? `<div class="qpage-tag">p.${q.page}</div>` : ""}
+      </div>
+    `).join("");
+
+  const est = b.status === "in_progress" ? estimateFinish(b) : null;
+  const earlyDays = (b.status === "done" && b.endDate && b.plannedEnd && b.endDate < b.plannedEnd) ? daysDiff(b.endDate, b.plannedEnd) : 0;
+  const inner = document.getElementById("overlay-inner");
+  inner.innerHTML = `
+    <div class="detail-top">
+      <button class="back-btn sans" id="backBtn">← 서재로</button>
+      <select class="status-select" id="statusSelect">
+        <option value="wishlist" ${b.status==="wishlist"?"selected":""}>읽고 싶음</option>
+        <option value="not_started" ${b.status==="not_started"?"selected":""}>시작 전</option>
+        <option value="in_progress" ${b.status==="in_progress"?"selected":""}>읽는 중</option>
+        <option value="done" ${b.status==="done"?"selected":""}>완료</option>
+        <option value="dropped" ${b.status==="dropped"?"selected":""}>중단</option>
+      </select>
+    </div>
+
+    <label class="visibility-switch">
+      <input type="checkbox" id="visibilityCheckbox" ${b.isPublic?"checked":""} />
+      <span class="vs-track"><span class="vs-thumb"></span></span>
+      <span class="vs-label sans">${b.isPublic ? "🌐 공개 중 — 친구가 공유 링크에서 볼 수 있어요" : "🔒 비공개 — 나만 볼 수 있어요"}</span>
+    </label>
+
+    <input class="book-title-input" id="titleInput" value="${escapeHtml(b.title)}" />
+    <div class="book-meta-edit">
+      <div class="meta-row"><span class="meta-label sans">작가</span><input id="authorInput" value="${escapeHtml(b.author||"")}" placeholder="입력해 주세요" /></div>
+      <div class="meta-row"><span class="meta-label sans">출판사</span><input id="publisherInput" value="${escapeHtml(b.publisher||"")}" placeholder="입력해 주세요" /></div>
+      <div class="meta-row"><span class="meta-label sans">옮긴이</span><input id="translatorInput" value="${escapeHtml(b.translator||"")}" placeholder="있다면 입력" /></div>
+    </div>
+    <div class="meta-dates">
+      <div class="meta-date-chip ${b.startDate?"filled":""}">
+        <span class="mdc-label sans">시작일 (눌러서 변경)</span>
+        <input type="date" class="mdc-input" id="startDateInput" value="${b.startDate||""}" />
+      </div>
+      <div class="meta-date-chip ${b.endDate?"filled":""}">
+        <span class="mdc-label sans">완료일 (눌러서 변경)</span>
+        <input type="date" class="mdc-input" id="endDateInput" value="${b.endDate||""}" />
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3 class="sans">진행률</h3>
+      <div class="progress-row">
+        <div class="ring-wrap">
+          <svg width="74" height="74">
+            <circle cx="37" cy="37" r="30" stroke="var(--paper-dim)" stroke-width="7" fill="none"/>
+            <circle cx="37" cy="37" r="30" stroke="var(--cloth)" stroke-width="7" fill="none"
+              stroke-dasharray="${circumference}" stroke-dashoffset="${circumference-dash}" stroke-linecap="round"/>
+          </svg>
+          <div class="ring-pct">${pct}%</div>
+        </div>
+        <div class="page-inputs">
+          <input type="number" id="currentPageInput" value="${b.currentPage}" min="0" /> /
+          <input type="number" id="totalPageInput" value="${b.totalPages}" min="0" /> 페이지
+        </div>
+      </div>
+      <div class="finish-row sans">
+        <div class="fr-item">
+          <span class="fr-label">완독 예상일</span>
+          <b>${est ? fmtDate(est.date) : "—"}</b>
+          <span class="fr-note">${est ? `하루 평균 ${est.pace}쪽 기준` : "읽는 중 + 페이지를 기록하면 계산돼요"}</span>
+        </div>
+        <div class="fr-item">
+          <span class="fr-label">목표 완독일 (눌러서 변경)</span>
+          <input type="date" class="mdc-input" id="plannedEndInput" value="${b.plannedEnd||""}" />
+          <span class="fr-note">시작 2일째부터 예상일로 자동 설정돼요</span>
+        </div>
+      </div>
+      ${earlyDays > 0 ? `<div class="early-chip">⚡ 목표보다 ${earlyDays}일 일찍 완독했어요!</div>` : ""}
+    </div>
+
+    <div class="detail-section">
+      <h3 class="sans">별점</h3>
+      <div class="stars-edit" id="ratingStars">
+        ${[1,2,3,4,5].map(i=>`<span class="star ${i<=(b.rating\vert{}\vert{}0)?"filled":""}" data-val="${i}">★</span>`).join("")}
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3 class="sans">장르 / 태그</h3>
+      <div class="tag-input-row">
+        <input id="genreInput" placeholder="예: 에세이, 소설, 자기계발" />
+        <button class="secondary" id="addGenreBtn" type="button">추가</button>
+      </div>
+      <div class="tag-list">
+        ${(b.genres||[]).map(g=>`<span class="tag-chip">${escapeHtml(g)}<span class="x" data-genre="${escapeHtml(g)}">✕</span></span>`).join("")}
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3 class="sans">독서 타이머 · 누적 ${totalMinutesStr}</h3>
+      <div class="timer-box">
+        <div class="timer-display" id="timerDisplay">00:00:00</div>
+        <div class="btn-row">
+          <button id="timerToggle">${timer.running ? "읽기 종료" : "읽기 시작"}</button>
+        </div>
+        <div class="timer-note sans">읽기 시작을 누르고, 오늘 그만 읽을 때 읽기 종료를 누르면 이번 세션이 누적 시간에 더해져요.</div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h3 class="sans">좋았던 문구</h3>
+      <div class="quote-form">
+        <textarea id="quoteText" placeholder="마음에 남은 문구를 적어보세요"></textarea>
+        <input class="qpage" id="quotePage" type="number" placeholder="p." />
+      </div>
+      <div class="btn-row" style="justify-content:flex-end; margin-bottom:16px;">
+        <button class="secondary" id="addQuoteBtn">문구 추가</button>
+      </div>
+      ${quotesHtml}
+    </div>
+
+    <div class="detail-section">
+      <h3 class="sans">이 책에서 얻은 것 (한 줄)</h3>
+      <input class="takeaway-input" id="takeawayInput" value="${escapeHtml(b.takeaway||"")}" placeholder="배운 점이나 써먹고 싶은 점을 한 줄로 적어보세요" />
+    </div>
+
+    <div class="detail-section">
+      <h3 class="sans">독후감</h3>
+      <textarea class="review-area" id="reviewArea" placeholder="다 읽고 나서, 혹은 읽는 중간에도 생각을 남겨보세요.">${escapeHtml(b.review)}</textarea>
+      <div class="review-save-row">
+        <span class="save-hint sans" id="reviewSaveHint"></span>
+        <button id="saveReviewBtn">독후감 저장</button>
+      </div>
+    </div>
+
+    <div class="detail-section danger-zone">
+      <button class="ghost" id="deleteBookBtn">이 책 삭제</button>
+    </div>
+  `;
+
+  document.getElementById("backBtn").addEventListener("click", closeBook);
+
+  document.getElementById("statusSelect").addEventListener("change", async (e)=>{
+    const newStatus = e.target.value;
+    const patch = { status:newStatus };
+    if(newStatus === "in_progress"){
+      if(!b.startDate) patch.startDate = todayStr();
+      patch.endDate = null;
+    }
+    if(newStatus === "done"){
+      if(!b.endDate) patch.endDate = todayStr();
+      if(!b.startDate) patch.startDate = todayStr();
+      if(b.totalPages) patch.currentPage = b.totalPages;
+    }
+    if(newStatus === "not_started" || newStatus === "wishlist"){ patch.startDate = null; patch.endDate = null; patch.plannedEnd = null; }
+    await updateBook(patch);
+    renderDetail();
+  });
+
+  document.getElementById("titleInput").addEventListener("blur", async (e)=>{
+    await updateBook({ title: e.target.value.trim() || "제목 없음" });
+  });
+  ["startDate","endDate"].forEach(field=>{
+    const input = document.getElementById(field+"Input");
+    const chip = input.closest(".meta-date-chip");
+    chip.addEventListener("click", ()=>{ try{ input.showPicker(); }catch(_){} });
+    input.addEventListener("change", async (e)=>{
+      await updateBook({ [field]: e.target.value || null });
+      renderDetail();
+    });
+  });
+  document.getElementById("visibilityCheckbox").addEventListener("change", async (e)=>{
+    await updateBook({ isPublic: e.target.checked });
+    renderDetail();
+  });
+  document.getElementById("takeawayInput").addEventListener("blur", async (e)=>{
+    await updateBook({ takeaway: e.target.value.trim() });
+  });
+  document.getElementById("takeawayInput").addEventListener("keydown", (e)=>{ if(e.key === "Enter") e.target.blur(); });
+  const plannedInput = document.getElementById("plannedEndInput");
+  plannedInput.addEventListener("click", ()=>{ try{ plannedInput.showPicker(); }catch(_){} });
+  plannedInput.addEventListener("change", async (e)=>{
+    await updateBook({ plannedEnd: e.target.value || null });
+    renderDetail();
+  });
+  document.getElementById("authorInput").addEventListener("blur", async (e)=>{
+    await updateBook({ author: e.target.value.trim() });
+  });
+  document.getElementById("publisherInput").addEventListener("blur", async (e)=>{
+    await updateBook({ publisher: e.target.value.trim() });
+  });
+  document.getElementById("translatorInput").addEventListener("blur", async (e)=>{
+    await updateBook({ translator: e.target.value.trim() });
+  });
+
+  document.getElementById("currentPageInput").addEventListener("change", async (e)=>{
+    const cp = Math.max(0, parseInt(e.target.value)||0);
+    const patch = { currentPage: cp };
+    if(cp > 0 && (b.status === "not_started" || b.status === "wishlist")){
+      patch.status = "in_progress";
+      if(!b.startDate) patch.startDate = todayStr();
+    }
+    await updateBook(patch);
+    renderDetail();
+  });
+  document.getElementById("totalPageInput").addEventListener("change", async (e)=>{
+    await updateBook({ totalPages: Math.max(0, parseInt(e.target.value)||0) });
+    renderDetail();
+  });
+
+  document.getElementById("ratingStars").addEventListener("click", async (e)=>{
+    const star = e.target.closest(".star");
+    if(!star) return;
+    const val = parseInt(star.dataset.val);
+    await updateBook({ rating: (b.rating===val) ? 0 : val });
+    renderDetail();
+  });
+
+  document.getElementById("addGenreBtn").addEventListener("click", async ()=>{
+    const input = document.getElementById("genreInput");
+    const val = input.value.trim();
+    if(!val) return;
+    b.genres = b.genres || [];
+    if(!b.genres.includes(val)) b.genres.push(val);
+    await updateBook({});
+    renderDetail();
+  });
+  document.querySelectorAll("#overlay-inner .tag-chip .x").forEach(x=>{
+    x.addEventListener("click", async (e)=>{
+      const g = e.target.dataset.genre;
+      b.genres = (b.genres||[]).filter(item=>item!==g);
+      await updateBook({});
+      renderDetail();
+    });
+  });
+
+  document.getElementById("timerToggle").addEventListener("click", ()=>{
+    if(timer.running) stopAndSaveSession(true);
+    else startTimer();
+  });
+
+  document.getElementById("addQuoteBtn").addEventListener("click", async ()=>{
+    const textEl = document.getElementById("quoteText");
+    const pageEl = document.getElementById("quotePage");
+    const text = textEl.value.trim();
+    if(!text) return;
+    b.quotes = b.quotes || [];
+    b.quotes.push({ id:"q_"+Date.now(), text, page: parseInt(pageEl.value)||null });
+    await updateBook({});
+    renderDetail();
+  });
+
+  document.querySelectorAll("#overlay-inner .quote-item .del").forEach(btn=>{
+    btn.addEventListener("click", async (e)=>{
+      const qid = e.target.dataset.qid;
+      b.quotes = (b.quotes||[]).filter(q=>q.id!==qid);
+      await updateBook({});
+      renderDetail();
+    });
+  });
+
+  document.getElementById("saveReviewBtn").addEventListener("click", async ()=>{
+    const text = document.getElementById("reviewArea").value;
+    await updateBook({ review: text });
+    document.getElementById("reviewSaveHint").textContent = "저장되었습니다.";
+    setTimeout(()=> {
+      const hint = document.getElementById("reviewSaveHint");
+      if(hint) hint.textContent = "";
+    }, 2000);
+  });
+
+  document.getElementById("deleteBookBtn").addEventListener("click", async ()=>{
+    if(!confirm("이 책을 삭제하시겠습니까?")) return;
+    data.books = data.books.filter(x=>x.id!==b.id);
+    await saveData();
+    closeBook();
+  });
+}
+
+function startTimer(){
+  timer.running = true;
+  timer.startTs = Date.now();
+  updateTimerDisplay();
+  timerInterval = setInterval(updateTimerDisplay, 1000);
+  const btn = document.getElementById("timerToggle");
+  if(btn) btn.textContent = "읽기 종료";
+}
+
+function stopAndSaveSession(doSave){
+  if(!timer.running) return;
+  clearInterval(timerInterval);
+  timer.running = false;
+  const elapsedMs = Date.now() - timer.startTs + timer.elapsed;
+  const minutes = Math.round(elapsedMs / 60000);
+
+  if(doSave && minutes > 0){
+    const b = getBook();
+    if(b){
+      b.sessions = b.sessions || [];
+      b.sessions.push({ date: todayStr(), minutes });
+      updateBook({});
+    }
+  }
+
+  timer.elapsed = 0;
+  timer.startTs = null;
+  const btn = document.getElementById("timerToggle");
+  if(btn) btn.textContent = "읽기 시작";
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay(){
+  const display = document.getElementById("timerDisplay");
+  if(!display) return;
+  let totalMs = timer.elapsed;
+  if(timer.running){ totalMs += Date.now() - timer.startTs; }
+  const totalSec = Math.floor(totalMs / 1000);
+  const h = String(Math.floor(totalSec / 3600)).padStart(2,"0");
+  const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2,"0");
+  const s = String(totalSec % 60).padStart(2,"0");
+  display.textContent = `${h}:${m}:${s}`;
+}
+
+window.addEventListener("DOMContentLoaded", loadData);
+</script>
 </body>
 </html>
