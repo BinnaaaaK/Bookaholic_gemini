@@ -1,15 +1,126 @@
 /* ==========================================================================
-   1. Bridge Page & Nudge Setup Step (목표 전환 및 넛지)
+   1. 기본 테마 및 변수 정의 (Dark Theme & Bookshelf Aesthetic)
+   ========================================================================== */
+:root {
+  --bg-main: #121110;
+  --bg-paper-dark: #1a1816;
+  --bg-card: #231f1c;
+  --text-main: #e6dfd5;
+  --text-gold: #d4af37;
+  --text-muted: #a0958d;
+  --border-color: #332d29;
+  --border-highlight: #4a4038;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  margin: 0;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+/* ==========================================================================
+   2. 동기부여 인용구 배너 (Motivation Banner)
+   ========================================================================== */
+.motivation-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(0,0,0,0.4));
+  border-left: 4px solid var(--text-gold);
+  border-radius: 0 6px 6px 0;
+  padding: 1rem 1.5rem;
+}
+
+.motivation-quote {
+  font-family: 'Georgia', serif;
+  font-size: 1rem;
+  color: #dfd5c6;
+  font-style: italic;
+}
+
+.motivation-author {
+  font-size: 0.85rem;
+  color: var(--text-gold);
+  margin-left: 8px;
+  font-style: normal;
+}
+
+/* ==========================================================================
+   3. 메인 MBO 달성률 잔디밭 그리드 (Achievement Heatmap Grid)
+   ========================================================================== */
+.section-container {
+  background: var(--bg-paper-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.section-title {
+  font-size: 1.2rem;
+  color: var(--text-gold);
+  margin: 0 0 0.3rem 0;
+}
+
+.section-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 1rem 0;
+}
+
+.mbo-grid-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(22px, 1fr));
+  gap: 6px;
+  padding: 1rem;
+  background: #141211;
+  border-radius: 6px;
+  border: 1px solid #2d2722;
+}
+
+.mbo-grid-cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background-color: rgba(212, 175, 55, var(--achievement-level, 0.08));
+  border: 1px solid rgba(212, 175, 55, calc(var(--achievement-level, 0.08) * 0.5));
+  transition: transform 0.2s ease, background-color 0.3s ease;
+  cursor: pointer;
+}
+
+.mbo-grid-cell:hover {
+  transform: scale(1.25);
+  z-index: 2;
+  border-color: var(--text-gold);
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+}
+
+/* 달성률 단계별 농도 레벨 */
+.mbo-grid-cell[data-level="0"] { --achievement-level: 0.05; }
+.mbo-grid-cell[data-level="1"] { --achievement-level: 0.25; }
+.mbo-grid-cell[data-level="2"] { --achievement-level: 0.50; }
+.mbo-grid-cell[data-level="3"] { --achievement-level: 0.75; }
+.mbo-grid-cell[data-level="4"] { --achievement-level: 1.00; }
+
+/* ==========================================================================
+   4. Bridge Page & Step Wizard (목표 전환 및 넛지)
    ========================================================================== */
 .bridge-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 80vh;
-  padding: 3rem 1.5rem;
-  background: var(--bg-paper-dark, #1a1816);
-  border: 1px solid var(--border-color, #332d29);
+  min-height: 380px;
+  padding: 2.5rem 1.5rem;
+  background: var(--bg-paper-dark);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
   text-align: center;
@@ -27,31 +138,32 @@
 }
 
 .bridge-header {
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
 }
 
 .bridge-title {
   font-family: 'Georgia', serif;
-  font-size: 2.2rem;
-  color: var(--text-gold, #d4af37);
+  font-size: 2rem;
+  color: var(--text-gold);
   letter-spacing: 1px;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.5rem 0;
 }
 
 .bridge-subtitle {
-  font-size: 1rem;
-  color: var(--text-muted, #a0958d);
+  font-size: 0.95rem;
+  color: var(--text-muted);
   font-style: italic;
+  margin: 0;
 }
 
-/* 목표 구체화 넛지 (Step-by-Step) Form */
+/* 넛지 단계별 설정 UI */
 .nudge-step-wizard {
   width: 100%;
-  max-width: 600px;
-  background: rgba(35, 31, 28, 0.8);
-  border: 1px solid var(--border-color, #3d352e);
+  max-width: 520px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-highlight);
   border-radius: 8px;
-  padding: 2rem;
+  padding: 1.8rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
@@ -59,137 +171,137 @@
   display: flex;
   justify-content: center;
   gap: 8px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.2rem;
 }
 
 .step-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--border-color, #4a4038);
-  transition: background 0.3s ease;
+  background: #4a4038;
 }
 
 .step-dot.active {
-  background: var(--text-gold, #d4af37);
+  background: var(--text-gold);
   box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
 }
 
 .nudge-question {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   color: #e6dfd5;
-  margin-bottom: 1.2rem;
-  line-height: 1.6;
+  margin-bottom: 1rem;
 }
 
 .nudge-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.2rem;
 }
 
 .nudge-input {
   width: 100%;
-  padding: 0.8rem 1rem;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
   background: #121110;
-  border: 1px solid var(--border-color, #4a4038);
+  border: 1px solid #4a4038;
   border-radius: 6px;
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .nudge-input:focus {
   outline: none;
-  border-color: var(--text-gold, #d4af37);
+  border-color: var(--text-gold);
 }
 
 .nudge-actions {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s;
+}
+
+.btn-primary {
+  background: var(--text-gold);
+  color: #121110;
+  font-weight: bold;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid #4a4038;
+}
+
+.btn-primary:hover, .btn-secondary:hover {
+  opacity: 0.85;
 }
 
 /* ==========================================================================
-   2. Book Quote & Motivation Bar (매 페이지 동기부여 요소)
+   5. 세부 목표 & 카드/칸반 요소 (Goal Detail & Cards)
    ========================================================================== */
-.motivation-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(0,0,0,0.4));
-  border-left: 4px solid var(--text-gold, #d4af37);
-  border-radius: 0 6px 6px 0;
-  padding: 0.9rem 1.2rem;
-  margin-bottom: 1.5rem;
-}
-
-.motivation-quote {
-  font-family: 'Georgia', serif;
-  font-size: 0.95rem;
-  color: #dfd5c6;
-  font-style: italic;
-}
-
-.motivation-author {
-  font-size: 0.8rem;
-  color: var(--text-gold, #d4af37);
-  margin-left: 8px;
-  font-style: normal;
-}
-
-/* ==========================================================================
-   3. 메인 MBO 잔디/그리드 달성률 농도 표현 (Achievement Grid)
-   ========================================================================== */
-.mbo-grid-board {
+.goal-detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(18px, 1fr));
-  gap: 4px;
-  padding: 1rem;
-  background: #141211;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.goal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  border: 1px solid #2d2722;
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
 }
 
-.mbo-grid-cell {
-  aspect-ratio: 1;
+.goal-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.goal-card-title {
+  font-size: 1.1rem;
+  color: var(--text-gold);
+  margin: 0;
+}
+
+.goal-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #121110;
   border-radius: 3px;
-  /* --achievement-level 변수로 색상 농도 제어 (0.0 ~ 1.0) */
-  background-color: rgba(212, 175, 55, var(--achievement-level, 0.08));
-  border: 1px solid rgba(212, 175, 55, calc(var(--achievement-level, 0.08) * 0.5));
-  transition: transform 0.2s ease, background-color 0.3s ease;
-  position: relative;
+  overflow: hidden;
 }
 
-.mbo-grid-cell:hover {
-  transform: scale(1.2);
-  z-index: 2;
-  border-color: var(--text-gold, #d4af37);
+.goal-progress-fill {
+  height: 100%;
+  background: var(--text-gold);
+  border-radius: 3px;
 }
-
-/* 농도 레벨 예시 Class */
-.mbo-grid-cell[data-level="0"] { --achievement-level: 0.05; }
-.mbo-grid-cell[data-level="1"] { --achievement-level: 0.25; }
-.mbo-grid-cell[data-level="2"] { --achievement-level: 0.50; }
-.mbo-grid-cell[data-level="3"] { --achievement-level: 0.75; }
-.mbo-grid-cell[data-level="4"] { --achievement-level: 1.00; }
 
 /* ==========================================================================
-   4. 생활 종합 정리 & 독서 회고 레이아웃 (Retrospective Spread)
+   6. 생활 종합 정리 & 독서 회고 (Retrospective Spread)
    ========================================================================== */
 .retrospective-spread {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
   padding: 2.5rem;
-  background: var(--bg-paper-dark, #1c1a17);
-  border: 1px solid var(--border-color, #383029);
+  background: var(--bg-paper-dark);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.6);
   position: relative;
 }
 
-/* 중앙 책 접힘선 효과 */
 .retrospective-spread::after {
   content: '';
   position: absolute;
@@ -204,32 +316,36 @@
 .retro-page-left, .retro-page-right {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.2rem;
 }
 
 .retro-section-title {
   font-family: 'Georgia', serif;
-  font-size: 1.3rem;
-  color: var(--text-gold, #d4af37);
-  border-bottom: 1px dashed var(--border-color, #4a4038);
+  font-size: 1.2rem;
+  color: var(--text-gold);
+  border-bottom: 1px dashed #4a4038;
   padding-bottom: 0.5rem;
+  margin: 0;
 }
 
 .retro-summary-card {
   background: rgba(0, 0, 0, 0.2);
-  padding: 1rem 1.2rem;
+  padding: 1rem;
   border-radius: 6px;
-  border-left: 3px solid var(--text-gold, #d4af37);
+  border-left: 3px solid var(--text-gold);
   font-size: 0.9rem;
   color: #ccc;
   line-height: 1.6;
 }
 
-/* 반응형 모바일 대응 */
+/* 모바일 대응 */
 @media (max-width: 768px) {
+  body {
+    padding: 1rem;
+  }
   .retrospective-spread {
     grid-template-columns: 1fr;
-    gap: 1.5rem;
+    padding: 1.5rem;
   }
   .retrospective-spread::after {
     display: none;
