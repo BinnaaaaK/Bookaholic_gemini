@@ -1,0 +1,237 @@
+/* ==========================================================================
+   1. Bridge Page & Nudge Setup Step (목표 전환 및 넛지)
+   ========================================================================== */
+.bridge-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  padding: 3rem 1.5rem;
+  background: var(--bg-paper-dark, #1a1816);
+  border: 1px solid var(--border-color, #332d29);
+  border-radius: 12px;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.bridge-book-spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  background: linear-gradient(90deg, #0f0e0d, #2a2522 70%, transparent);
+}
+
+.bridge-header {
+  margin-bottom: 2.5rem;
+}
+
+.bridge-title {
+  font-family: 'Georgia', serif;
+  font-size: 2.2rem;
+  color: var(--text-gold, #d4af37);
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+}
+
+.bridge-subtitle {
+  font-size: 1rem;
+  color: var(--text-muted, #a0958d);
+  font-style: italic;
+}
+
+/* 목표 구체화 넛지 (Step-by-Step) Form */
+.nudge-step-wizard {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(35, 31, 28, 0.8);
+  border: 1px solid var(--border-color, #3d352e);
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.step-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border-color, #4a4038);
+  transition: background 0.3s ease;
+}
+
+.step-dot.active {
+  background: var(--text-gold, #d4af37);
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
+}
+
+.nudge-question {
+  font-size: 1.15rem;
+  color: #e6dfd5;
+  margin-bottom: 1.2rem;
+  line-height: 1.6;
+}
+
+.nudge-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.nudge-input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background: #121110;
+  border: 1px solid var(--border-color, #4a4038);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.nudge-input:focus {
+  outline: none;
+  border-color: var(--text-gold, #d4af37);
+}
+
+.nudge-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ==========================================================================
+   2. Book Quote & Motivation Bar (매 페이지 동기부여 요소)
+   ========================================================================== */
+.motivation-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(0,0,0,0.4));
+  border-left: 4px solid var(--text-gold, #d4af37);
+  border-radius: 0 6px 6px 0;
+  padding: 0.9rem 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.motivation-quote {
+  font-family: 'Georgia', serif;
+  font-size: 0.95rem;
+  color: #dfd5c6;
+  font-style: italic;
+}
+
+.motivation-author {
+  font-size: 0.8rem;
+  color: var(--text-gold, #d4af37);
+  margin-left: 8px;
+  font-style: normal;
+}
+
+/* ==========================================================================
+   3. 메인 MBO 잔디/그리드 달성률 농도 표현 (Achievement Grid)
+   ========================================================================== */
+.mbo-grid-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18px, 1fr));
+  gap: 4px;
+  padding: 1rem;
+  background: #141211;
+  border-radius: 8px;
+  border: 1px solid #2d2722;
+}
+
+.mbo-grid-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  /* --achievement-level 변수로 색상 농도 제어 (0.0 ~ 1.0) */
+  background-color: rgba(212, 175, 55, var(--achievement-level, 0.08));
+  border: 1px solid rgba(212, 175, 55, calc(var(--achievement-level, 0.08) * 0.5));
+  transition: transform 0.2s ease, background-color 0.3s ease;
+  position: relative;
+}
+
+.mbo-grid-cell:hover {
+  transform: scale(1.2);
+  z-index: 2;
+  border-color: var(--text-gold, #d4af37);
+}
+
+/* 농도 레벨 예시 Class */
+.mbo-grid-cell[data-level="0"] { --achievement-level: 0.05; }
+.mbo-grid-cell[data-level="1"] { --achievement-level: 0.25; }
+.mbo-grid-cell[data-level="2"] { --achievement-level: 0.50; }
+.mbo-grid-cell[data-level="3"] { --achievement-level: 0.75; }
+.mbo-grid-cell[data-level="4"] { --achievement-level: 1.00; }
+
+/* ==========================================================================
+   4. 생활 종합 정리 & 독서 회고 레이아웃 (Retrospective Spread)
+   ========================================================================== */
+.retrospective-spread {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  padding: 2.5rem;
+  background: var(--bg-paper-dark, #1c1a17);
+  border: 1px solid var(--border-color, #383029);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  position: relative;
+}
+
+/* 중앙 책 접힘선 효과 */
+.retrospective-spread::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,0.8), transparent);
+  transform: translateX(-50%);
+}
+
+.retro-page-left, .retro-page-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.retro-section-title {
+  font-family: 'Georgia', serif;
+  font-size: 1.3rem;
+  color: var(--text-gold, #d4af37);
+  border-bottom: 1px dashed var(--border-color, #4a4038);
+  padding-bottom: 0.5rem;
+}
+
+.retro-summary-card {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1rem 1.2rem;
+  border-radius: 6px;
+  border-left: 3px solid var(--text-gold, #d4af37);
+  font-size: 0.9rem;
+  color: #ccc;
+  line-height: 1.6;
+}
+
+/* 반응형 모바일 대응 */
+@media (max-width: 768px) {
+  .retrospective-spread {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .retrospective-spread::after {
+    display: none;
+  }
+}
